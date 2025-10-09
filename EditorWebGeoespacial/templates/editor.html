@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mapa{% endblock %}
+{% block content %}
+
+<div class="contenedor-mapa">
+    <!--sidebar-->
+    {% if user.is_authenticated %}
+    <div id="sidebar" class="sidebar" style="margin-top: 52px;">
+        <button id="toggleSidebar" class="btn btn-sm btn-light">
+            &lt;
+        </button>
+        <div id="sidebar-content"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC usar for each TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
+
+        </div>
+    </div>
+    {% endif %}
+    <div id="map">
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!--------------------------------------LEAFLET Y MAPA DE OPS------------------------------------>
+<!--Este link y script provienen de leaflet. Cargan los íconos y funcionalidades-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+
+<!---------------------------------INICIA LEAFLET GEOMAN------------------------------------>
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css"/>
+{% if user.is_authenticated %}
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.js"></script>
+{% endif %}
+
+<!--ESTE SCRIPT CARGA LOS DIFERENTES TILESETS Y DESPUÉS CARGA EL MAPA, INICIANDO CON EL DE LAS CALLES-->
+<script>
+    const calles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    });
+    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles © Esri'
+    });
+    const relieve = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenTopoMap contributors'
+    })
+    var map = L.map('map', {pmIgnore: false}).setView([-33.03853, -71.60666], 14);
+    calles.addTo(map);
+</script>
+<!--ESTE SCRIPT PERMITE SELECCIONAR EL TILESET DEL MAPA-->
+<script>
+    let currentLayer = calles;
+        
+    const edicionesLayer = L.layerGroup().addTo(map);
+        
+    function cambiarMapa(layer){
+        if (currentLayer) map.removeLayer(currentLayer);
+        layer.addTo(map);
+        currentLayer = layer;
+    }
+    //listeners para las distintas opciones del menú de mapas
+    document.getElementById('mapaSatelital').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(satelite);
+    });
+    document.getElementById('mapaCalles').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(calles);
+    });
+    document.getElementById('mapaRelieve').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(relieve);
+    });
+
+</script>
+<!--ESTE SCRIPT AÑADE LA BARRA DE HERRAMIENTAS DE GEOMAN-->
+<script>
+    map.pm.addControls({  
+        position: 'topright',  
+        drawCircleMarker: false,
+        rotateMode: false,
+        editMode: true,
+        dragMode: true,
+        removalMode: true,
+        cutPolygon: false,
+        drawText: false,
+    }); 
+</script>
+<!-------------------------------------------------FUNCIONALIDADES VARIAS---------------------------------------->
+<!--LISTENER--------->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        //----------SCRIPT PARA LA SIDEBAR------------------
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleSidebar");
+
+        toggleBtn.addEventListener("click", function () {
+            sidebar.classList.toggle("minimized");
+            setTimeout(() => {
+                map.invalidateSize(); // Ajusta Leaflet después del cambio
+            }, 310);
+
+            if (sidebar.classList.contains("minimized")){
+                toggleBtn.innerHTML = "&gt;"
+            } else {
+                toggleBtn.innerHTML = "&lt;"
+            }
+        });
+
+        //------------------------SCRIPT PARA CARGAR LAS FIGURAS DEL LOCALSTORAGE-----------------
+        
+        const editableLayers = L.featureGroup().addTo(map);
+
+        function cargarFiguras(){
+            var figurasGuardadas = localStorage.getItem('todasLasFiguras');
+            if (figurasGuardadas) {
+                var geojson = JSON.parse(figurasGuardadas);
+                L.geoJSON(geojson, {
+                    onEachFeature: function(feature, layer){
+                        editableLayers.addLayer(layer);
+                        attachEditListeners(layer);
+                    }
+                }).addTo(map);
+            }
+        }
+        
+        //FUNCION PARA GUARDAR LAS FIGURAS EN EL LOCALSTORAGE
+        function guardarFiguras(){
+            var geojson = map.pm.getGeomanLayers(true).toGeoJSON();
+            localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
+        }
+
+        //LISTENERS PARA EDITAR, MOVER Y ELIMINAR UNA FIGURA
+        function attachEditListeners(layer){
+            layer.on("pm:edit", guardarFiguras);
+            layer.on("pm:dragend", guardarFiguras);
+            layer.on("pm:remove", guardarFiguras);
+        }
+
+        //CREAR UNA NUEVA FIGURA
+        map.on("pm:create", e =>{
+            const layer = e.layer;
+            editableLayers.addLayer(layer);
+            attachEditListeners(layer);
+            guardarFiguras();
+        })
+        
+        cargarFiguras(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
+    });
+</script>
+{% endblock %}
