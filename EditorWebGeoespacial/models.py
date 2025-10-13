@@ -1,28 +1,9 @@
-from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.contrib.gis.db import models #PARA QUE FUNCIONE HAY QUE INSTALAR GDAL Y POSTGIS
 
 # Create your models here.
-
-#__________________________________________//CLASE BASE\\______________________________________
-class Figura(models.Model):
-    nombre              = models.CharField(max_length=100)
-    coordenadas         = models.JSONField()
-    Capa                = models.ForeignKey('Capa', on_delete=models.CASCADE, related_name="figuras", null=True, blank=True)
-
-    def clean(self):
-        if not isinstance(self.coordenadas, dict) or 'type' not in self.coordenadas:
-            raise ValidationError('El campo coordenadas debe tener un objeto GeoJSON válido.')
-
-    def __str__(self):
-       return f'Nombre: {self.nombre}. Coordenadas: {self.coordenadas}'
-    
-#_________________________________________//OTROS\\_________________________________
-
-class Sector(models.Model):
-    nombre              = models.CharField(max_length=50, blank=False)
-
-#_____________________________________//CATEGORIAS Y SUBCATEGORIAS\\___________________
+#_____________________________________//CAPAS, CATEGORIAS Y SUBCATEGORIAS\\___________________
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100) #Ejemplo, Ambiental, Servicios, Seguridad, Vialidad, etc
@@ -36,48 +17,77 @@ class Subcategoria(models.Model):
 
     def __str__(self):
         return f'Nombre: {self.nombre}'
+    
+class Capa(models.Model):
+    nombre              = models.CharField(max_length=100)
+    autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    fecha_creacion      = models.DateTimeField(auto_now_add=True)
+
+#__________________________________________//CLASE BASE\\______________________________________
+class Figura(models.Model):
+    coordenadas         = models.GeometryField()
+    categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE)
+    capa                = models.ForeignKey(Capa, on_delete=models.CASCADE, related_name="figuras", null=True, blank=True)
+
+    def clean(self):
+        if not isinstance(self.coordenadas, dict) or 'type' not in self.coordenadas:
+            raise ValidationError('El campo coordenadas debe tener un objeto GeoJSON válido.')
+
+    def __str__(self):
+       return f'Coordenadas: {self.coordenadas}'
+    
+#_________________________________________//OTROS\\_________________________________
+
+class Sector(models.Model):
+    nombre              = models.CharField(max_length=50, blank=False)
+
+class Tipo_de_via(models.Model):
+    tipo                = models.CharField(max_length=20, blank=False)
+
 
 
 #--------------------------------TABLAS INDIVIDUALES---------------------------------
-class Microbasural(models.Model):
+class Microbasural(Figura):
     opcionesAccesibilidad = [
         ('buena', 'BUENA'),
         ('regular', 'REGULAR'),
         ('mala', 'MALA')
     ]
-
-    direccion           = models.CharField(max_length=50, blank=False)
-    m2                  = models.IntegerField
-    m3                  = models.IntegerField
+    direccion           = models.CharField(max_length=20, blank=False)
+    m2                  = models.IntegerField()
+    m3                  = models.IntegerField()
     accesibilidad       = models.CharField(max_length=10, choices=opcionesAccesibilidad)
     tipo_residuo        = models.CharField(max_length=10)
-    observacion         = models.TextField
+    observacion         = models.TextField()
 
     def __str__(self):
         return f'Dirección: {self.direccion}. Accesibilidad: {self.accesibilidad}. Tipo residuo: {self.tipo_residuo}'
     
-class Cauces(models.Model):
+class Cauces(Figura):
     tipificacion        = models.CharField(max_length=2)
-    longitud            = models.IntegerField
+    longitud            = models.IntegerField()
     nombre              = models.CharField(max_length=50)
-    largo_tramo         = models.IntegerField
+    largo_tramo         = models.IntegerField()
     capacidad_maxima    = models.CharField(max_length=15)
     pendiente           = models.DecimalField(max_digits=3, decimal_places=1)
 
-class Grifos(models.Model):
-    numero              = models.IntegerField
-    mm                  = models.IntegerField
+class Grifos(Figura):
+    numero              = models.IntegerField()
+    mm                  = models.IntegerField()
 
-class Cuarteles_de_bomberos(models.Model):
+class Cuarteles_de_bomberos(Figura):
     nombre              = models.CharField(max_length=50, blank=False)
     cerro_o_sector      = models.ForeignKey('Sector', on_delete=models.CASCADE)
+    tipo_via            = models.ForeignKey('Tipo_de_via', on_delete=models.CASCADE)
+    direccion           = models.CharField(max_length=20)
+    numeracion          = models.CharField(max_length=5)
+    telefono            = models.CharField(max_length=11)
+
 
 
 
     
 
-class Capa(models.Model):
-    nombre              = models.CharField(max_length=100)
-    autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    fecha_creacion      = models.DateTimeField(auto_now_add=True)
+
 # Estoy pensando que los campos podrían aparecer dependiendo de la categoría seleccionada

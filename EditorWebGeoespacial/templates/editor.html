@@ -5,16 +5,77 @@
 
 <div class="contenedor-mapa">
     <!--sidebar-->
-    {% if user.is_authenticated %}
     <div id="sidebar" class="sidebar" style="margin-top: 52px;">
         <button id="toggleSidebar" class="btn btn-sm btn-light">
             &lt;
         </button>
         <div id="sidebar-content"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC usar for each TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
-
+            <!--Colocar un condicional para que el texto desaparezca al escoger una opción-->
+            <div id="sidebar-header">
+                {% if user.is_authenticated %}
+                <h6 id="titulo-sidebar">Escoja una categoría o cree una nueva (texto temporal)</h6>
+                {% endif %}
+            </div>
+            <div id="sidebar-body">
+                <ul style="list-style-type: none; line-height: 70%; margin-left: -20px;">
+                    {% if user.is_authenticated %}
+                    <hr class="sidebar-divider">
+                    <li style="padding: 2px;">
+                        <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria">
+                            Crear nueva categoría
+                        </button>
+                    </li>
+                    {% endif %}
+                    {% for element in categorias %}
+                    <hr class="sidebar-divider">
+                    <li>
+                        <button class="sidebar-options">
+                            {{element.nombre}}
+                        </button>   
+                    </li>
+                    {% endfor %}
+                    <!--Esta parte es de prueba para ver las figuras-->
+                    
+                </ul>
+            </div>
         </div>
     </div>
-    {% endif %}
+    <div class="modal fade" id="modalEstaticoCategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="tituloModal">Nueva categoría</h1>
+                    <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="categoriaForm" method="POST" action="">
+                        {% csrf_token %}
+                        {{ formCategoria.as_p }}
+                        <button type="button" class="btn btn-secondary boton-cerrar" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="modalEstaticoSubcategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="tituloModal">Nueva subcategoría</h1>
+                    <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="SubcategoriaForm" method="POST" action="">
+                        {% csrf_token %}
+                        {{ formSubcategoria.as_p}}
+                        <button type="button" class="btn btn-secondary boton-cerrar" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="map">
     </div>
 </div>
@@ -156,6 +217,68 @@
         })
         
         cargarFiguras(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
+
+        //PARA ENVIAR LAS CATEGORIAS Y SUBCATEGORIAS A LA BASE DE DATOS POR AJAX
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        const categoriaForm = document.getElementById('categoriaForm');
+        
+        categoriaForm.addEventListener('submit', function(e){
+            e.preventDefault();
+
+            const formData = new FormData(document.getElementById('categoriaForm'));
+            formData.append('tipo_form', 'categoria')
+
+            fetch('/guardar_por_ajax/', {
+                method: 'POST',
+                body: formData,
+                headers: {'X-CSRFToken': csrftoken},
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success){
+                    console.log("Guardado con éxito: ", data.nombre);
+                } else {
+                    console.error("Error: ", data.errors);
+                }
+            })
+        })
+
+        const subcategoriaForm = document.getElementById('SubcategoriaForm');
+
+        subcategoriaForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(subcategoriaForm);
+            formData.append('tipo_form', 'subcategoria');
+
+            fetch('/guardar_por_ajax/', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': csrftoken },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Subcategoría creada: " + data.nombre);
+                } else {
+                    console.error("Error:", data.errors);
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

@@ -1,11 +1,41 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
-from .forms import RegistroForm
+from django.contrib.gis.geos import GEOSGeometry
+from django.http import JsonResponse
+from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria
+from .models import Categoria, Subcategoria, Microbasural, Cuarteles_de_bomberos, Grifos
 
 # Create your views here.
 
-def editor(request):
-    return render(request, 'editor.html')
+def editor(request):    
+    formCategoria = FormularioCategoria(data= request.POST, files= request.FILES)
+    formSubcategoria = FormularioSubcategoria(data= request.POST, files= request.FILES)
+    if request.method == 'POST':
+        
+        if formCategoria.is_valid():
+            formCategoria.save()
+            return redirect('editor')
+        elif formSubcategoria.is_valid():
+            formSubcategoria.save()
+            return redirect('editor')
+        else:
+            print("Errores en el formulario: ", formCategoria.errors)
+            print("Errores en el formulario: ", formSubcategoria.errors)
+
+    else:
+        formCategoria = FormularioCategoria()
+        formSubcategoria = FormularioSubcategoria()
+
+    categorias = Categoria.objects.all()
+    subcategorias = Subcategoria.objects.all()
+    context = {
+        "categorias": categorias,
+        "subcategorias": subcategorias,
+        'formCategoria': formCategoria,
+        'formSubcategoria': formSubcategoria,
+    }
+    
+    return render(request, 'editor.html', context)
 
 def pagregistro(request):
     if request.method == 'POST':
@@ -27,3 +57,40 @@ def paglogout(request):
     response = redirect('editor')
     response.set_cookie('clear_local_storage', '1', max_age=5)
     return response
+
+#VISTAS PARA GUARDAR CATEGORIAS Y SUBCATEGORIAS MEDIANTE AJAX
+
+def guardar_por_ajax(request):
+    if request.method == "POST":
+        tipo_form = request.POST.get('tipo_form')
+
+        if tipo_form == 'categoria':
+            form = FormularioCategoria(request.POST, request.FILES)
+            if form.is_valid():
+                categoria = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'tipo': 'categoria',
+                    'nombre': categoria.nombre,
+                    'id': categoria.id,
+                })
+            else:
+                return JsonResponse({'success': False, 'errors': form.errors})
+        
+        elif tipo_form == 'subcategoria':
+            form = FormularioSubcategoria(request.POST, request.FILES)
+            if form.is_valid():
+                subcategoria = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'tipo': 'subcategoria',
+                    'nombre': subcategoria.nombre,
+                    'id': subcategoria.id,
+                })
+            else:
+                return JsonResponse({'success': False, 'errors': form.errors})
+
+        else:
+            return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
+    
+    return JsonResponse({'success': False, 'error': 'Método no permitido.'})
