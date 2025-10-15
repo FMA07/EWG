@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'EditorWebGeoespacial'
+    'django.contrib.gis',
+    'EditorWebGeoespacial',
 ]
 
 MIDDLEWARE = [
@@ -76,8 +77,8 @@ WSGI_APPLICATION = 'EWG.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'PrimeraBaseDeDatos',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': 'EWG',
         'USER': 'adminFelipe',
         'PASSWORD': 'ContraseñaBD',
         'HOST': 'localhost',

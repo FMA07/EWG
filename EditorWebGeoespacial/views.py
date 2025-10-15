@@ -3,7 +3,7 @@ from django.contrib.auth import login, logout
 from django.contrib.gis.geos import GEOSGeometry
 from django.http import JsonResponse
 from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria
-from .models import Categoria, Subcategoria, Microbasural, Cuarteles_de_bomberos, Grifos
+from .models import Categoria, Subcategoria, Figura
 
 # Create your views here.
 
@@ -61,6 +61,8 @@ def paglogout(request):
 #VISTAS PARA GUARDAR CATEGORIAS Y SUBCATEGORIAS MEDIANTE AJAX
 
 def guardar_por_ajax(request):
+    print("Método recibido:", request.method)
+    print("POST data:", request.POST)
     if request.method == "POST":
         tipo_form = request.POST.get('tipo_form')
 
@@ -94,3 +96,34 @@ def guardar_por_ajax(request):
             return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
     
     return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+
+def obtener_contenido_categoria(request, categoria_id):
+    try:
+        categoria = Categoria.objects.get(pk= categoria_id)
+        subcategorias = Subcategoria.objects.filter(categoria= categoria).values('id', 'nombre')
+        figuras = Figura.objects.filter(categoria= categoria).values('id', 'coordenadas')
+        
+        if subcategorias.exists():
+            return JsonResponse({
+                'tipo': 'subcategorias',
+                'items': list(subcategorias)
+            })
+
+        else:
+            return JsonResponse ({
+                'tipo': 'figuras',
+                'items': list(figuras)
+            })
+
+    except Categoria.DoesNotExist:
+        return JsonResponse({'error': 'Categoría no encontrada'}, status = 404)
+    
+def obtener_contenido_subcategoria(request, subcategoria_id):
+    try:
+        figuras = Figura.objects.filter(subcategoria_id=subcategoria_id).values('id', 'coordenadas')
+        return JsonResponse({
+            'tipo': 'figuras',
+            'items': list(figuras)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

@@ -93,6 +93,61 @@
     {% block content %}
     {% endblock %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const botonImportar = document.getElementById('botonImportarCapa');
+
+            if (botonImportar) {
+                botonImportar.addEventListener('click', async (e) => {
+                    e.preventDefault();
+
+                    // Crear input para seleccionar el archivo .zip
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.zip';
+                    input.onchange = async (event) => {
+                        const file = event.target.files[0];
+                        if (!file) return;
+
+                        try {
+                            const arrayBuffer = await file.arrayBuffer();
+
+                            // Convertir el shapefile a GeoJSON
+                            const geojson = await shp(arrayBuffer);
+                        
+                            // Crear capa GeoJSON en Leaflet
+                            const capa = L.geoJSON(geojson, {
+                                onEachFeature: (feature, layer) => {
+                                    let popup = '';
+                                    for (const prop in feature.properties) {
+                                        popup += `<strong>${prop}:</strong> ${feature.properties[prop]}<br>`;
+                                    }
+                                    layer.bindPopup(popup);
+                                },
+                                style: {
+                                    color: '#007bff',
+                                    weight: 2
+                                }
+                            }).addTo(window.map);
+                        
+                            // Ajustar vista
+                            window.map.fitBounds(capa.getBounds());
+                        
+                            alert('✅ Capa importada correctamente');
+                        } catch (err) {
+                            console.error('Error al importar el shapefile:', err);
+                            alert('⚠️ No se pudo leer el shapefile. Asegúrate de que el ZIP contenga .shp, .shx y .dbf.');
+                        }
+                    };
+                
+                    input.click();
+                });
+            }
+        });
+    </script>
+
     {% block extra_scripts %}
     
     {% endblock %}

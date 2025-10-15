@@ -21,22 +21,32 @@
                     {% if user.is_authenticated %}
                     <hr class="sidebar-divider">
                     <li style="padding: 2px;">
-                        <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria">
+                        <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria" style="font-weight: bold;">
                             Crear nueva categoría
                         </button>
                     </li>
                     {% endif %}
-                    {% for element in categorias %}
+                    {% for categoria in categorias %}
                     <hr class="sidebar-divider">
-                    <li>
-                        <button class="sidebar-options">
-                            {{element.nombre}}
-                        </button>   
+                    <li class="fila-lista">
+                        <button class="flecha-derecha"></button>
+                        <button class="form-check-input" type="checkbox"></button>
+                        <button class="sidebar-options" data-id="{{ categoria.id }}">
+                            {{categoria.nombre}}
+                        </button>
+                        <li class="opciones-sidebar">
+                            
+                            <button class="sidebar-options crear-subcat-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubcategoria" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
+                                Crear nueva subcategoría
+                            </button>
+                            <li class="subcat-list" id="subcats-{{ categoria.id }}" style="display: none; list-style-type: none; margin-left: 1rem;"></li>
+                        </li>
+                         
+                        <ul class="subcat-list" id="subcats-{{ categoria.id }}" style="display: none; list-style-type: none; margin-left: 1rem;"></ul>
                     </li>
                     {% endfor %}
-                    <!--Esta parte es de prueba para ver las figuras-->
-                    
                 </ul>
+                <div id="figuras-container"></div>
             </div>
         </div>
     </div>
@@ -58,7 +68,7 @@
             </div>
         </div>
     </div>
-    <div class="modal fade" id="modalEstaticoSubcategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
+    <div class="modal fade" id="modalEstaticoSubcategoria" tabindex="-1" aria-labelledby="modalEstaticoSubcategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -66,7 +76,7 @@
                     <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="SubcategoriaForm" method="POST" action="">
+                    <form id="subcategoriaForm" method="POST" action="">
                         {% csrf_token %}
                         {{ formSubcategoria.as_p}}
                         <button type="button" class="btn btn-secondary boton-cerrar" data-bs-dismiss="modal">Cancelar</button>
@@ -159,7 +169,96 @@
 <!-------------------------------------------------FUNCIONALIDADES VARIAS---------------------------------------->
 <!--LISTENER--------->
 <script>
+    
     document.addEventListener("DOMContentLoaded", function () {
+        //--------CÓDIGO PARA MOSTRAR LAS SUBCATEGORÍAS Y FIGURAS AL CLICKEAR LA CATEGORÍA
+        document.querySelectorAll('.sidebar-options').forEach(button => {
+            button.addEventListener('click', function(){
+                const categoriaId = this.dataset.id;
+                const subcatList = document.getElementById(`subcats-${categoriaId}`);
+                const figurasContainer = document.getElementById('figuras-container');
+                const crearSubcatBtn = document.querySelector(`.crear-subcat-btn[data-categoria-id="${categoriaId}"]`);
+
+                if (!categoriaId) return;
+
+                document.querySelectorAll('.crear-subcat-btn').forEach(btn => btn.style.display = 'none');
+
+                crearSubcatBtn.style.display = 'inline-block';
+
+                if (subcatList.style.display === 'block') {
+                    subcatList.style.display = 'none';
+                    crearSubcatBtn.style.display = 'none';
+                    figurasContainer.innerHTML =''
+                    return;
+                }
+
+                document.querySelectorAll('.subcat-list').forEach(ul => ul.style.display = 'none');
+                figurasContainer.innerHTML = '';
+
+                fetch(`/obtener_contenido_categoria/${categoriaId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        subcatList.innerHTML = '';
+
+                        if (data.tipo === 'subcategorias') {
+                            data.items.forEach(sub => {
+                                const li = document.createElement('li');
+                                const btn = document.createElement('button');
+                                btn.className = 'sidebar-suboption';
+                                btn.dataset.id = sub.id;
+                                btn.textContent = sub.nombre;
+                                btn.addEventListener('click', function(event){
+                                    event.stopPropagation();
+
+                                    fetch(`/obtener_contenido_subcategoria/${sub.id}/`)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            figurasContainer.innerHTML = '';
+                                            if (data.items.length === 0) {
+                                                figurasContainer.innerHTML = `<p>No hay figuras en "${sub.nombre}".</p>`;
+                                            } else {
+                                                figurasContainer.innerHTML = `<h5>Figuras de ${sub.nombre}:</h5>`;
+                                                data.items.forEach(fig => {
+                                                    const div = document.createElement('div');
+                                                    div.textContent = `Figura ID: ${fig.id}`;
+                                                    figurasContainer.appendChild(div);
+                                                });
+                                            }
+                                        })
+                                        .catch(err => console.error("Error cargando figuras: ", err));
+                                });
+
+                                li.appendChild(btn);
+                                subcatList.appendChild(li);
+                            });
+                            subcatList.style.display = 'block';
+                        } else if (data.tipo === 'figuras') {
+                            if ( data.items.length === 0) {
+                                figurasContainer.innerHTML = `<p>No hay figuras asociadas a esta categoría.</p>`;
+                            } else {
+                                figurasContainer.innerHTML = `<h5>Figuras:</h5>`;
+                                data.items.forEach(fig => {
+                                    const div = document.createElement('div');
+                                    div.textContent = 'Figura ID: ${fig.id}';
+                                    figurasContainer.appendChild(div);
+                                });
+                            }
+                        }
+                    })
+                    .catch(err => console.error("Error cargando categoría: ", err));
+            })
+        })
+        //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL
+        const modalSubcategoria = document.getElementById('modalEstaticoSubcategoria');
+        modalSubcategoria.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const categoriaId = button.getAttribute('data-categoria-id');
+            const categoriaSelect = modalSubcategoria.querySelector('#id_categoria');
+
+            if (categoriaSelect) {
+                categoriaSelect.value = categoriaId;
+            }
+        })
         
         //----------SCRIPT PARA LA SIDEBAR------------------
         const sidebar = document.getElementById("sidebar");
@@ -243,22 +342,36 @@
             const formData = new FormData(document.getElementById('categoriaForm'));
             formData.append('tipo_form', 'categoria')
 
-            fetch('/guardar_por_ajax/', {
+            fetch('guardar_por_ajax', {
                 method: 'POST',
                 body: formData,
                 headers: {'X-CSRFToken': csrftoken},
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.success){
+            .then(data => { //De acá para abajo, si se guarda exitosamente la categoría, se cierra el modal y se actualiza la lista del sidebar
+                if (data.success && data.tipo === 'categoria'){
                     console.log("Guardado con éxito: ", data.nombre);
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoCategoria'));
+                    modal.hide();
+
+                    const sidebarList = document.querySelector('#sidebar-body ul');
+                    const newLi = document.createElement('li');
+                    newLi.innerHTML = 
+                    `
+                        <hr class="sidebar-divider">
+                        <button class="sidebar-options">${data.nombre}</button>
+                    `;
+
+                    sidebarList.appendChild(newLi);
+
+                    categoriaForm.reset();
                 } else {
                     console.error("Error: ", data.errors);
                 }
             })
         })
 
-        const subcategoriaForm = document.getElementById('SubcategoriaForm');
+        const subcategoriaForm = document.getElementById('subcategoriaForm');
 
         subcategoriaForm.addEventListener('submit', function(e) {
             e.preventDefault();

@@ -112,6 +112,28 @@ body, html{
 
 /*Personalización sidebar*/
 
+.fila-lista{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: 0.2s;
+}
+
+.fila-lista:hover{
+    background-color: #88e5d5;
+}
+
+.active, .fila-lista:hover{
+    border-width: 1px;
+    border-color: #21e1c0;
+    border-style:solid;
+}
+
+.opciones-sidebar{
+    /*display: none;*/
+    overflow: hidden;
+}
+
 .sidebar {
     width: 250px;
     background-color: #f8f9fa;
@@ -136,7 +158,7 @@ body, html{
 
 .sidebar-divider{
     color: #212529;
-    margin-left: 10px;
+    margin-left: 40px;
 }
 
 #sidebar-header{
@@ -153,6 +175,12 @@ body, html{
 }
 
 .sidebar-options{
+    background: none;
+    border: none;
+}
+
+.sidebar-suboption{
+    margin-top: 10px;
     background: none;
     border: none;
 }
