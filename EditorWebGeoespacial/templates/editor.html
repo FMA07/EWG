@@ -10,43 +10,47 @@
             &lt;
         </button>
         <div id="sidebar-content"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC usar for each TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
-            <!--Colocar un condicional para que el texto desaparezca al escoger una opción-->
-            <div id="sidebar-header">
-                {% if user.is_authenticated %}
-                <h6 id="titulo-sidebar">Escoja una categoría o cree una nueva (texto temporal)</h6>
-                {% endif %}
-            </div>
             <div id="sidebar-body">
-                <ul style="list-style-type: none; line-height: 70%; margin-left: -20px;">
+                <ul style="list-style-type: none; margin-left: -20px;">
                     {% if user.is_authenticated %}
-                    <hr class="sidebar-divider">
-                    <li style="padding: 2px;">
-                        <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria" style="font-weight: bold;">
-                            Crear nueva categoría
-                        </button>
+                    <li class="lista-categorias">
+                        <div class="contenedor-categorias">
+                            <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria" style="font-weight: bold; display: block;">
+                                Crear nueva categoría
+                            </button>
+                        </div>
                     </li>
                     {% endif %}
                     {% for categoria in categorias %}
-                    <hr class="sidebar-divider">
-                    <li class="fila-lista">
-                        <button class="flecha-derecha"></button>
-                        <button class="form-check-input" type="checkbox"></button>
-                        <button class="sidebar-options" data-id="{{ categoria.id }}">
-                            {{categoria.nombre}}
-                        </button>
-                        <li class="opciones-sidebar">
-                            
-                            <button class="sidebar-options crear-subcat-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubcategoria" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
-                                Crear nueva subcategoría
+                    <li class="lista-categorias">
+                        <div class="contenedor-categorias">
+                            <button class="form-check-input" type="checkbox"></button>
+                            <button class="sidebar-options boton-categorias-toggle" data-id="{{ categoria.id }}">
+                                {{categoria.nombre}}
                             </button>
-                            <li class="subcat-list" id="subcats-{{ categoria.id }}" style="display: none; list-style-type: none; margin-left: 1rem;"></li>
-                        </li>
-                         
-                        <ul class="subcat-list" id="subcats-{{ categoria.id }}" style="display: none; list-style-type: none; margin-left: 1rem;"></ul>
+                        </div>
+    
+                        <ul class="lista-subcategorias" style="display: none; list-style-type: none; margin-left: -20px;">
+                            {% if user.is_authenticated %}
+                            <li>
+                                <div class="contenedor-subcategorias">
+                                    <button class="sidebar-options crear-subcat-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubcategoria" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
+                                        Crear nueva subcategoría
+                                    </button>
+                                </div>
+                                <div class="contenedor-subcategorias">
+                                    <button class="sidebar-options crear-subclas-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubclasificacion" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
+                                        Crear nueva subclasificación
+                                    </button>
+                                </div>
+                            </li>
+                            {% endif %}
+                            <li class="subcat-list-items" id="subcats-{{ categoria.id }}"></li>
+                            <li class="subclas-list-items" id="subclas-cat-{{ categoria.id }}"></li>
+                        </ul>
                     </li>
                     {% endfor %}
                 </ul>
-                <div id="figuras-container"></div>
             </div>
         </div>
     </div>
@@ -86,9 +90,54 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="modalEstaticoSubclasificacion" tabindex="-1" aria-labelledby="modalEstaticoSubclasificacion" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="tituloModal">Nueva subclasificación</h1>
+                    <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="subclasForm" method="POST" action="">
+                        {% csrf_token %}
+                        {{ formSubclas.as_p}}
+                        <button type="button" class="btn btn-secondary boton-cerrar" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--Modal de datos de nueva figura-->
+    <div class="modal fade" id="modalNuevaFigura" tabindex="-1" aria-labelledby="modalNuevaFigura" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="tituloModal">Atributos Figura</h1>
+                    <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <!--El formulario debería depender de la figura creada-->
+                    <form action=""></form>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="map">
     </div>
+    <!--Offcanvas-->
+    <button id="toggleTablas" class="btn btn-sm btn-light" data-bs-toggle="offcanvas" data-bs-target="#seccionTablas" aria-controls="seccionTablas"><img src="{% static 'icons/table.png' %}" alt="tabla" height="20px" width="20px"></button>
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="seccionTablas" aria-labelledby="seccionTablas">
+        <div class="offcanvas-header" style="height: 40px;">
+            <h5 class="offcanvas-title">Tabla de atributos</h5>
+        </div>
+        <hr>
+        <div id="cuerpoTablas" class="offcanvas-body small">
+            
+        </div>
+    </div>
 </div>
+
 
 
 
@@ -124,8 +173,35 @@
         maxZoom: 19,
         attribution: '© OpenTopoMap contributors'
     })
-    var map = L.map('map', {pmIgnore: false}).setView([-33.03853, -71.60666], 14);
+
+    const defaultLat = -33.03853;
+    const defaultLng = -71.60666;
+    const defaultZoom = 14;
+    var southWest = L.latLng(-33.367279, -71.78279122251949);
+    var northEast = L.latLng(-32.979154, -71.331662);
+    var limitesMapa = L.latLngBounds(southWest, northEast);
+
+    let latGuardada = localStorage.getItem('mapCenterLat');
+    let lngGuardada = localStorage.getItem('mapCenterLng');
+    let zoomGuardado = localStorage.getItem('mapZoom');
+
+    const latInicial = latGuardada ? parseFloat(latGuardada) : defaultLat;
+    const lngInicial = lngGuardada ? parseFloat(lngGuardada) : defaultLng;
+    const zoomInicial = zoomGuardado ? parseInt(zoomGuardado) : defaultZoom;
+
+    var map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
     calles.addTo(map);
+    map.setMaxBounds(limitesMapa);
+    
+
+    //FUNCION PARA GUARDAR LA VISTA ACTUAL EN LOCALSTORGAGE
+    function guardarVista(){
+        localStorage.setItem('mapCenterLat', map.getCenter().lat);
+        localStorage.setItem('mapCenterLng', map.getCenter().lng);
+        localStorage.setItem('mapZoom', map.getZoom());
+    }
+
+    map.on('moveend', guardarVista);
 </script>
 <!--ESTE SCRIPT PERMITE SELECCIONAR EL TILESET DEL MAPA-->
 <script>
@@ -153,102 +229,192 @@
     });
 
 </script>
-<!--ESTE SCRIPT AÑADE LA BARRA DE HERRAMIENTAS DE GEOMAN-->
-<script>
-    map.pm.addControls({  
-        position: 'topright',  
-        drawCircleMarker: false,
-        rotateMode: false,
-        editMode: true,
-        dragMode: true,
-        removalMode: true,
-        cutPolygon: false,
-        drawText: false,
-    }); 
-</script>
+
 <!-------------------------------------------------FUNCIONALIDADES VARIAS---------------------------------------->
+
 <!--LISTENER--------->
 <script>
+    //FUNCIONES DE LA LISTA DE CATEGORIAS
     
     document.addEventListener("DOMContentLoaded", function () {
-        //--------CÓDIGO PARA MOSTRAR LAS SUBCATEGORÍAS Y FIGURAS AL CLICKEAR LA CATEGORÍA
-        document.querySelectorAll('.sidebar-options').forEach(button => {
-            button.addEventListener('click', function(){
+        
+        var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
+
+        botonCategorias.forEach(function(boton){
+            boton.addEventListener("click", function(e){
+                e.preventDefault();
+
+                var listaCategorias = this.closest('.lista-categorias');
+                var listaSubcategoriasUl = listaCategorias ? listaCategorias.querySelector('.lista-subcategorias') : null;
                 const categoriaId = this.dataset.id;
-                const subcatList = document.getElementById(`subcats-${categoriaId}`);
-                const figurasContainer = document.getElementById('figuras-container');
-                const crearSubcatBtn = document.querySelector(`.crear-subcat-btn[data-categoria-id="${categoriaId}"]`);
 
-                if (!categoriaId) return;
+                if (listaSubcategoriasUl) {
 
-                document.querySelectorAll('.crear-subcat-btn').forEach(btn => btn.style.display = 'none');
+                    const seAbre = listaSubcategoriasUl.style.display === 'none' || !listaSubcategoriasUl.style.display;
 
-                crearSubcatBtn.style.display = 'inline-block';
-
-                if (subcatList.style.display === 'block') {
-                    subcatList.style.display = 'none';
-                    crearSubcatBtn.style.display = 'none';
-                    figurasContainer.innerHTML =''
-                    return;
-                }
-
-                document.querySelectorAll('.subcat-list').forEach(ul => ul.style.display = 'none');
-                figurasContainer.innerHTML = '';
-
-                fetch(`/obtener_contenido_categoria/${categoriaId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        subcatList.innerHTML = '';
-
-                        if (data.tipo === 'subcategorias') {
-                            data.items.forEach(sub => {
-                                const li = document.createElement('li');
-                                const btn = document.createElement('button');
-                                btn.className = 'sidebar-suboption';
-                                btn.dataset.id = sub.id;
-                                btn.textContent = sub.nombre;
-                                btn.addEventListener('click', function(event){
-                                    event.stopPropagation();
-
-                                    fetch(`/obtener_contenido_subcategoria/${sub.id}/`)
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            figurasContainer.innerHTML = '';
-                                            if (data.items.length === 0) {
-                                                figurasContainer.innerHTML = `<p>No hay figuras en "${sub.nombre}".</p>`;
-                                            } else {
-                                                figurasContainer.innerHTML = `<h5>Figuras de ${sub.nombre}:</h5>`;
-                                                data.items.forEach(fig => {
-                                                    const div = document.createElement('div');
-                                                    div.textContent = `Figura ID: ${fig.id}`;
-                                                    figurasContainer.appendChild(div);
-                                                });
-                                            }
-                                        })
-                                        .catch(err => console.error("Error cargando figuras: ", err));
-                                });
-
-                                li.appendChild(btn);
-                                subcatList.appendChild(li);
-                            });
-                            subcatList.style.display = 'block';
-                        } else if (data.tipo === 'figuras') {
-                            if ( data.items.length === 0) {
-                                figurasContainer.innerHTML = `<p>No hay figuras asociadas a esta categoría.</p>`;
-                            } else {
-                                figurasContainer.innerHTML = `<h5>Figuras:</h5>`;
-                                data.items.forEach(fig => {
-                                    const div = document.createElement('div');
-                                    div.textContent = 'Figura ID: ${fig.id}';
-                                    figurasContainer.appendChild(div);
-                                });
+                    if (seAbre) {
+                        document.querySelectorAll('.lista-subcategorias').forEach(ul => {
+                            if (ul !== listaSubcategoriasUl) {
+                                ul.style.display = 'none';
                             }
-                        }
-                    })
-                    .catch(err => console.error("Error cargando categoría: ", err));
+                        });
+                        
+                        listaSubcategoriasUl.style.display = 'block';
+                        fetchContenidoCategoria(categoriaId, listaCategorias);
+                    } else {
+                        listaSubcategoriasUl.style.display = 'none';
+                        document.getElementById('figuras-container').innerHTML = '';
+                    }
+                }
             })
-        })
-        //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL
+        });
+        
+
+        // CODIGO PARA CARGAR EL CONTENIDO DE LAS CATEGORIAS Y SUBCATEGORIAS
+        function fetchContenidoCategoria(categoriaId, listaCategorias) {
+            const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
+            const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
+
+            subcatListContainer.innerHTML = '<li>Cargando...</li>';
+            subclasListContainer.innerHTML = '';
+
+            fetch(`/obtener_contenido_categoria/${categoriaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    subcatListContainer.innerHTML = '';
+
+                    if (!data) {
+                        subcatListContainer.innerHTML = `<li>Error cargando contenido: ${data.error}`;
+                        return
+                    }
+
+                    if (data.subcategorias) {
+                        data.subcategorias.forEach(sub => {
+                            const li = document.createElement('li');
+                            const itemContainer = document.createElement('div');
+                            itemContainer.className = 'contenedor-subcategorias';
+
+                            const checkbox = document.createElement('button');
+                            checkbox.className = 'form-check-input subitem-checkbox'
+                            checkbox.setAttribute('type', 'checkbox');
+
+                            const btn = document.createElement('button');
+                            btn.className = 'sidebar-suboption';
+                            btn.dataset.id = sub.id;
+                            btn.textContent = sub.nombre;
+
+                            btn.addEventListener('click', function(event){
+                                event.stopPropagation();
+                                fetchContenidoSubcategoria(sub.id, this); 
+                            });
+
+                            itemContainer.appendChild(checkbox);
+                            itemContainer.appendChild(btn)
+
+                            li.appendChild(itemContainer);
+                            subcatListContainer.appendChild(li);
+                        });
+                    }
+
+                    if (data.subclasificaciones_cat) {
+                        data.subclasificaciones_cat.forEach(sub => {
+                            const li = document.createElement('li');
+                            const itemContainer = document.createElement('div');
+                            itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
+
+                            const checkbox = document.createElement('button');
+                            checkbox.className = 'form-check-input subitem-checkbox';
+                            checkbox.setAttribute('type', 'checkbox');
+
+                            const subclasbtn = document.createElement('button');
+                            subclasbtn.className = 'sidebar-suboption'
+                            subclasbtn.textContent = sub.nombre;
+                            subclasbtn.dataset.id = sub.id
+
+                            itemContainer.appendChild(checkbox);
+                            itemContainer.appendChild(subclasbtn);
+
+                            li.appendChild(itemContainer);
+                            subclasListContainer.appendChild(li);
+
+                            subclasbtn.addEventListener('click', function(){
+
+                            })
+                        })
+                    }
+                })
+                .catch(err => {
+                    console.error('Error cargando categoría: ', err);
+                    subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
+                });
+        }
+
+        //Funciones auxiliares para el fetch de subcategorias
+        function fetchContenidoSubcategoria(subId, clickedButton){
+            const subcatLi = clickedButton.closest('li');
+            const subclasId = `subclas-for-sub-${subId}`;
+            const elementoSubclas = document.getElementById(subclasId);
+
+            if (elementoSubclas) {
+                elementoSubclas.remove()
+                return; 
+            }
+
+            const subclasLi = document.createElement('li');
+            subclasLi.id = `subclas-for-sub-${subId}`;
+            subclasLi.className = 'subclas-injected-li'
+            subclasLi.innerHTML ='<p style="text-align: center;">Cargando figuras...</p>';
+
+            subcatLi.after(subclasLi);
+
+            fetch(`/obtener_contenido_subcategoria/${subId}/`)
+                .then(response => response.json())
+                .then(data =>{
+                    mostrarSubclasificacion(data.items, subclasLi, subId);
+                })
+                .catch(err => {
+                    console.error('Error cargando las subclasificaciones: ', err),
+                    subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
+                })
+        }
+
+        function mostrarSubclasificacion(items, container, subId){
+            container.innerHTML = '';
+            
+            if (items.length === 0) {
+                const itemContainer = document.createElement('div');
+                itemContainer.className = 'contenedor-subcategorias';
+
+                const mensaje = document.createElement('span');
+                mensaje.textContent = 'No hay subclasificaciones asociadas';
+
+                itemContainer.appendChild(mensaje);
+                container.appendChild(itemContainer);
+
+            } else {
+
+                items.forEach(subclas => {
+                    const itemContainer = document.createElement('div');
+                    itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
+
+                    const checkbox = document.createElement('button');
+                    checkbox.className = 'form-check-input subitem-checkbox';
+                    checkbox.setAttribute('type', 'checkbox');
+
+                    const subclasId = document.createElement('span');
+                    subclasId.className = 'contenedor-subcategorias'
+                    subclasId.textContent = `${subclas.nombre}`;
+
+                    itemContainer.appendChild(checkbox);
+                    itemContainer.appendChild(subclasId);
+
+                    container.appendChild(itemContainer);
+                })
+            }
+        }
+        
+        
+        //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL DE SUBCATEGORIA
         const modalSubcategoria = document.getElementById('modalEstaticoSubcategoria');
         modalSubcategoria.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -256,6 +422,17 @@
             const categoriaSelect = modalSubcategoria.querySelector('#id_categoria');
 
             if (categoriaSelect) {
+                categoriaSelect.value = categoriaId;
+            }
+        })
+        //PARA ASIGNAR LA CATEGORIA AUTOMÁTICAMENTE EN EL MODAL DE SUBCLASIFICACION
+        const modalSubclas = document.getElementById('modalEstaticoSubclasificacion');
+        modalSubclas.addEventListener('show.bs.modal', function(event){
+            const button = event.relatedTarget;
+            const categoriaId = button.getAttribute('data-categoria-id');
+            const categoriaSelect = modalSubclas.querySelector('#id_categoria');
+
+            if (categoriaSelect){
                 categoriaSelect.value = categoriaId;
             }
         })
@@ -299,12 +476,16 @@
             var geojson = map.pm.getGeomanLayers(true).toGeoJSON();
             localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
         }
-
+        
         //LISTENERS PARA EDITAR, MOVER Y ELIMINAR UNA FIGURA
         function attachEditListeners(layer){
             layer.on("pm:edit", guardarFiguras);
             layer.on("pm:dragend", guardarFiguras);
             layer.on("pm:remove", guardarFiguras);
+
+            layer.on('click', function(e){
+                mostrarDatosOffcanvas(e.target);
+            } )
         }
 
         //CREAR UNA NUEVA FIGURA
@@ -313,9 +494,12 @@
             editableLayers.addLayer(layer);
             attachEditListeners(layer);
             guardarFiguras();
+            //
         })
         
         cargarFiguras(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
+
+        
 
         //PARA ENVIAR LAS CATEGORIAS Y SUBCATEGORIAS A LA BASE DE DATOS POR AJAX
         function getCookie(name) {
@@ -352,25 +536,36 @@
                 if (data.success && data.tipo === 'categoria'){
                     console.log("Guardado con éxito: ", data.nombre);
                     const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoCategoria'));
+                    categoriaForm.reset();
                     modal.hide();
 
                     const sidebarList = document.querySelector('#sidebar-body ul');
                     const newLi = document.createElement('li');
-                    newLi.innerHTML = 
-                    `
-                        <hr class="sidebar-divider">
-                        <button class="sidebar-options">${data.nombre}</button>
-                    `;
+                    newLi.className = 'lista-categorias';
+                    
+                    const contenedorCategorias = document.createElement('div');
+                    contenedorCategorias.className('contenedor-categorias');
 
+                    const checkbox = document.createElement('button');
+                    checkbox.className = 'form-check-input subitem-checkbox';
+                    checkbox.setAttribute('type', 'checkbox');
+                    
+                    const nuevaCategoria = document.createElement('button');
+                    nuevaCategoria.className = 'sidebar-options';
+                    nuevaCategoria.textContent = `${data.nombre}`
+
+                    contenedorCategorias.appendChild(checkbox);
+                    contenedorCategorias.appendChild(nuevaCategoria);
+                    newLi.appendChild(contenedorCategorias);
                     sidebarList.appendChild(newLi);
 
-                    categoriaForm.reset();
+                    
                 } else {
                     console.error("Error: ", data.errors);
                 }
             })
         })
-
+        
         const subcategoriaForm = document.getElementById('subcategoriaForm');
 
         subcategoriaForm.addEventListener('submit', function(e) {
@@ -378,7 +573,7 @@
             const formData = new FormData(subcategoriaForm);
             formData.append('tipo_form', 'subcategoria');
 
-            fetch('/guardar_por_ajax/', {
+            fetch('guardar_por_ajax', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRFToken': csrftoken },
@@ -386,12 +581,100 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert("Subcategoría creada: " + data.nombre);
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoSubcategoria'));
+                    subcategoriaForm.reset();
+                    modal.hide();
+
+                    const categoriaId = subclasForm.querySelector('#id_categoria').value;
+                    const listaCategoria = document.querySelector(`.boton-categorias-toggle[data-id="${categoriaId}"]`).closest('.lista-categorias')
+
+                    if (listaCategoria) {
+                        fetchContenidoCategoria(categoriaId, listaCategoria);
+                    }
                 } else {
                     console.error("Error:", data.errors);
                 }
             });
         });
+
+        const subclasForm = document.getElementById('subclasForm');
+
+        subclasForm.addEventListener('submit', function (e){
+            e.preventDefault();
+            const formData = new FormData(subclasForm);
+            formData.append('tipo_form', 'subclasificacion');
+
+            fetch('guardar_por_ajax', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': csrftoken },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Subclasificación creada' + data.nombre);
+                } else {
+                    console.error("Error: ", data.errors);
+                }
+            })
+        })
+
+        // CON ESTO APARECE LA BARRA DE HERRAMIENTAS DE GEOMAN AL PRESIONAR "CREAR NUEVA SUBCLASIFICACIÓN"
+
+        const btnNuevaSubclas = document.querySelectorAll('.crear-subclas-btn');
+
+        btnNuevaSubclas.forEach(button => {
+            button.addEventListener('click', function(e){
+                e.preventDefault()
+
+                map.pm.addControls({  
+                    position: 'bottomleft',  
+                    drawCircleMarker: false,
+                    rotateMode: false,
+                    editMode: true,
+                    dragMode: true,
+                    removalMode: true,
+                    cutPolygon: false,
+                    drawText: false,
+                }); 
+            })
+        })
+
+        //Funcion que permite ver la tabla de datos en offcanvas al hacer click en una figura de una capa cargada
+        function mostrarDatosOffcanvas(layer){
+            const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
+            const offcanvasBody = document.getElementById('cuerpoTablas');
+            const offcanvasElement = document.getElementById('seccionTablas')
+            
+
+            let tablaHtml = '<table class= "table table-striped table-sm">';
+            tablaHtml += '<thead><tr><th>Atributo</th><th>Valor</th></tr></thead>';
+            tablaHtml += '<tbody>';
+
+            const propKeys = Object.keys(properties);
+
+            if (propKeys.length === 0) {
+                tablaHtml += `<tr><td colspan="2">No hay atributos definidos para esta figura.</td></tr>`;
+            } else {
+                for (const key of propKeys){
+                    tablaHtml += `<tr><td><strong>${key}</strong></td><td>${properties[key]}</td></tr>`;
+                }
+            }
+            tablaHtml += '<tbody></table>'
+            offcanvasBody.innerHTML = tablaHtml;
+
+            if (offcanvasElement && typeof bootstrap !== 'undefined') {
+                let bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement)
+                if (!bsOffcanvas){
+                    bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
+                }
+                bsOffcanvas.show();
+            } else if (offcanvasElement) {
+                console.error("Error: La librería de Bootstrap no está cargada")
+            }
+
+        }
+        window.mostrarDatosOffcanvas = mostrarDatosOffcanvas;
     });
 </script>
 {% endblock %}

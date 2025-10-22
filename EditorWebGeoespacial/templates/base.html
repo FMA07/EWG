@@ -98,6 +98,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const botonImportar = document.getElementById('botonImportarCapa');
+            const botonGuardar = document.getElementById('botonGuardarCapa');
 
             if (botonImportar) {
                 botonImportar.addEventListener('click', async (e) => {
@@ -120,17 +121,16 @@
                             // Crear capa GeoJSON en Leaflet
                             const capa = L.geoJSON(geojson, {
                                 onEachFeature: (feature, layer) => {
-                                    let popup = '';
-                                    for (const prop in feature.properties) {
-                                        popup += `<strong>${prop}:</strong> ${feature.properties[prop]}<br>`;
+                                    layer.feature = feature;
+                                    
+                                    if (typeof window.mostrarDatosOffcanvas === 'function'){
+                                        layer.on('click', function(e){
+                                            window.mostrarDatosOffcanvas(e.target);
+                                        })
                                     }
-                                    layer.bindPopup(popup);
-                                },
-                                style: {
-                                    color: '#007bff',
-                                    weight: 2
                                 }
                             }).addTo(window.map);
+                            window.mostrarDatosOffcanvas = mostrarDatosOffcanvas;
                         
                             // Ajustar vista
                             window.map.fitBounds(capa.getBounds());
@@ -144,6 +144,15 @@
                 
                     input.click();
                 });
+            }
+
+            //PARA GUARDAR LA CAPA ENTERA
+            if (botonGuardar) {
+                botonGuardar.addEventListener('click', async(e) =>{
+                    e.preventDefault();
+
+                    const figurasCreadas = localStorage.getItem('todasLasFiguras')
+                })
             }
         });
     </script>

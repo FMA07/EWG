@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Categoria, Subcategoria, Microbasural, Cuarteles_de_bomberos, Grifos
+from .models import Categoria, Subcategoria, Subclasificacion, Microbasural, Cuarteles_de_bomberos, Grifos
 
 MODELOS = {
     "microbasural": Microbasural,
@@ -55,4 +55,9 @@ class FormularioCategoria(forms.ModelForm):
 class FormularioSubcategoria(forms.ModelForm):
     class Meta:
         model = Subcategoria
+        fields = "__all__"
+
+class FormularioSubclasificacion(forms.ModelForm):
+    class Meta:
+        model = Subclasificacion
         fields = "__all__"

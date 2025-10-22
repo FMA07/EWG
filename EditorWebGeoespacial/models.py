@@ -16,7 +16,15 @@ class Subcategoria(models.Model):
     nombre              = models.CharField(max_length=100) #Ejemplo, para Ambiental: microbasurales, focos de incendio, etc
 
     def __str__(self):
-        return f'Nombre: {self.nombre}'
+        return self.nombre
+    
+class Subclasificacion(models.Model):
+    categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
+    nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos
+    
+    def __str__(self):
+        return self.nombre
     
 class Capa(models.Model):
     nombre              = models.CharField(max_length=100)
@@ -26,8 +34,8 @@ class Capa(models.Model):
 #__________________________________________//CLASE BASE\\______________________________________
 class Figura(models.Model):
     coordenadas         = models.GeometryField()
-    categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-    subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE)
+    atributos           = models.JSONField(default=dict, blank=True)
+    subclasificacion    = models.ForeignKey(Subclasificacion, on_delete=models.CASCADE)
     capa                = models.ForeignKey(Capa, on_delete=models.CASCADE, related_name="figuras", null=True, blank=True)
 
     def clean(self):
@@ -47,7 +55,7 @@ class Tipo_de_via(models.Model):
 
 
 
-#--------------------------------TABLAS INDIVIDUALES---------------------------------
+#--------------------------------TABLAS INDIVIDUALES- por borrar--------------------------------
 class Microbasural(Figura):
     opcionesAccesibilidad = [
         ('buena', 'BUENA'),

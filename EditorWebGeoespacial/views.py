@@ -2,14 +2,15 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.gis.geos import GEOSGeometry
 from django.http import JsonResponse
-from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria
-from .models import Categoria, Subcategoria, Figura
+from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion
+from .models import Categoria, Subcategoria, Subclasificacion, Figura
 
 # Create your views here.
 
 def editor(request):    
     formCategoria = FormularioCategoria(data= request.POST, files= request.FILES)
     formSubcategoria = FormularioSubcategoria(data= request.POST, files= request.FILES)
+    formSubclas = FormularioSubclasificacion(data= request.POST, files= request.FILES)
     if request.method == 'POST':
         
         if formCategoria.is_valid():
@@ -18,13 +19,17 @@ def editor(request):
         elif formSubcategoria.is_valid():
             formSubcategoria.save()
             return redirect('editor')
+        elif formSubclas.is_valid():
+            formSubclas.save()
         else:
             print("Errores en el formulario: ", formCategoria.errors)
             print("Errores en el formulario: ", formSubcategoria.errors)
+            print('Errores en el formulario: ', formSubclas.errors)
 
     else:
         formCategoria = FormularioCategoria()
         formSubcategoria = FormularioSubcategoria()
+        formSubclas = FormularioSubclasificacion()
 
     categorias = Categoria.objects.all()
     subcategorias = Subcategoria.objects.all()
@@ -33,6 +38,7 @@ def editor(request):
         "subcategorias": subcategorias,
         'formCategoria': formCategoria,
         'formSubcategoria': formSubcategoria,
+        'formSubclas': formSubclas,
     }
     
     return render(request, 'editor.html', context)
@@ -91,6 +97,19 @@ def guardar_por_ajax(request):
                 })
             else:
                 return JsonResponse({'success': False, 'errors': form.errors})
+            
+        elif tipo_form == 'subclasificacion':
+            form = FormularioSubclasificacion(request.POST, request.FILES)
+            if form.is_valid():
+                subclasificacion = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'tipo': 'subclasificacion',
+                    'nombre': subclasificacion.nombre,
+                    'id': subclasificacion.id,
+                })
+            else:
+                return JsonResponse({'success': False, 'errors': form.errors})
 
         else:
             return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
@@ -101,29 +120,23 @@ def obtener_contenido_categoria(request, categoria_id):
     try:
         categoria = Categoria.objects.get(pk= categoria_id)
         subcategorias = Subcategoria.objects.filter(categoria= categoria).values('id', 'nombre')
-        figuras = Figura.objects.filter(categoria= categoria).values('id', 'coordenadas')
+        subclasificaciones_cat = Subclasificacion.objects.filter(categoria = categoria, subcategoria__isnull=True).values('id', 'nombre')
         
-        if subcategorias.exists():
-            return JsonResponse({
-                'tipo': 'subcategorias',
-                'items': list(subcategorias)
-            })
-
-        else:
-            return JsonResponse ({
-                'tipo': 'figuras',
-                'items': list(figuras)
-            })
+        return JsonResponse({
+            'success': True,
+            'subcategorias': list(subcategorias),
+            'subclasificaciones_cat': list(subclasificaciones_cat),
+        })
 
     except Categoria.DoesNotExist:
         return JsonResponse({'error': 'Categoría no encontrada'}, status = 404)
     
 def obtener_contenido_subcategoria(request, subcategoria_id):
     try:
-        figuras = Figura.objects.filter(subcategoria_id=subcategoria_id).values('id', 'coordenadas')
+        subclasificacion = Subclasificacion.objects.filter(subcategoria_id=subcategoria_id).values('id', 'nombre')
         return JsonResponse({
-            'tipo': 'figuras',
-            'items': list(figuras)
+            'tipo': 'subclasificacion',
+            'items': list(subclasificacion)
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

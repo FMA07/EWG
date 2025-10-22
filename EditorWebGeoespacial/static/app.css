@@ -105,6 +105,20 @@ body, html{
     font-size: 16px;
 }
 
+#toggleTablas{
+    background-color: #212529;
+    position: absolute;
+    height: 40px;
+    width: 40px;
+    top: 500px;
+    left: 1400px;
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: 15%;
+}
+
 /*Para ajustar el mapa cuando cambie el tamaño del sidebar*/
 .row {
     transition: all 0.3s ease;
@@ -112,21 +126,52 @@ body, html{
 
 /*Personalización sidebar*/
 
-.fila-lista{
+.contenedor-categorias{
     display: flex;
+    height: 50px;
+    width: 198px;
+    border-style: solid;
+    border-color: #c9c9c9;
+    border-right: none;
+    border-left: none;
+    border-width: 1px;
+    justify-content: flex-start;
     align-items: center;
-    gap: 5px;
-    transition: 0.2s;
+    padding-top: 10px;
 }
 
-.fila-lista:hover{
+.contenedor-subcategorias{
+    height: 50px;
+    width: 180px;
+    border-style: solid;
+    border-color: #c9c9c9;
+    border-right: none;
+    border-left: none;
+    border-width: 1px;
+    justify-content: flex-start;
+    align-items: center;
+    margin-left: 6px;
+    display: flex;
+}
+
+.contenedor-subcategorias:hover{
     background-color: #88e5d5;
 }
 
-.active, .fila-lista:hover{
-    border-width: 1px;
-    border-color: #21e1c0;
-    border-style:solid;
+.lista-categorias{
+    display: block;
+    gap: 5px;
+    transition: 0.4s;
+}
+
+.lista-categorias:hover{
+    background-color: #88e5d5;
+}
+
+.lista-subcategorias{
+    list-style-type: none;
+    display: none;
+    background-color: white;
 }
 
 .opciones-sidebar{
@@ -183,6 +228,13 @@ body, html{
     margin-top: 10px;
     background: none;
     border: none;
+    flex-grow: 1;
+    text-align: left;
+}
+
+.subitem-checkbox{
+    margin-right: 8px;
+    margin-top: 8px;
 }
 
 #titulo-sidebar{
