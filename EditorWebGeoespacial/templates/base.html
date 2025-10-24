@@ -119,8 +119,16 @@
                             const geojson = await shp(arrayBuffer);
                         
                             // Crear capa GeoJSON en Leaflet
-                            const capa = L.geoJSON(geojson, {
+                            L.geoJSON(geojson, {
                                 onEachFeature: (feature, layer) => {
+                                    if (window.editableLayers){
+                                        window.editableLayers.addLayer(layer);
+                                    }
+
+                                    if (typeof window.attachEditListeners === 'function'){
+                                        window.attachEditListeners(layer)
+                                    }
+                                    
                                     layer.feature = feature;
                                     
                                     if (typeof window.mostrarDatosOffcanvas === 'function'){
@@ -128,12 +136,20 @@
                                             window.mostrarDatosOffcanvas(e.target);
                                         })
                                     }
+
+                                    else if (window.editarDatosFigura) {
+                                        
+                                    }
                                 }
                             }).addTo(window.map);
-                            window.mostrarDatosOffcanvas = mostrarDatosOffcanvas;
-                        
-                            // Ajustar vista
-                            window.map.fitBounds(capa.getBounds());
+                            
+                            if (typeof window.guardarCapa === 'function'){
+                                window.guardarCapa();
+                            }
+
+                            if (window.editableLayers && window.editableLayers.getLayers().length > 0) {
+                                window.map.fitBounds(window.editableLayers.getBounds());
+                            }
                         
                             alert('Capa importada correctamente');
                         } catch (err) {
@@ -154,6 +170,8 @@
                     const figurasCreadas = localStorage.getItem('todasLasFiguras')
                 })
             }
+
+            //PARA EXPORTAR LA CAPA CREADA CON TODAS SUS FIGURAS
         });
     </script>
 

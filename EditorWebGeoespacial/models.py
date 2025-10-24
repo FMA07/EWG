@@ -19,9 +19,16 @@ class Subcategoria(models.Model):
         return self.nombre
     
 class Subclasificacion(models.Model):
+    OPCIONES_GEOMETRIA  = [
+        ('Point', 'Punto'),
+        ('MultiLinestring', 'PoliLínea'),
+        ('Polygon', 'Polígono'),
+    ]
     categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
     nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos
+    tipo_geometria      = models.CharField(max_length=20, choices=OPCIONES_GEOMETRIA, default='')
+    campos_config       = models.JSONField(default=list, blank=True)
     
     def __str__(self):
         return self.nombre
@@ -39,6 +46,12 @@ class Figura(models.Model):
     capa                = models.ForeignKey(Capa, on_delete=models.CASCADE, related_name="figuras", null=True, blank=True)
 
     def clean(self):
+        tipo_esperado = self.subclasificacion.tipo_geometria
+        tipo_recibido = self.coordenadas.geom_type
+
+        if tipo_recibido != tipo_esperado:
+            raise ValidationError(f'La subclasificación requiere geometría de tipo {tipo_esperado}, pero se recibió {tipo_recibido}')
+
         if not isinstance(self.coordenadas, dict) or 'type' not in self.coordenadas:
             raise ValidationError('El campo coordenadas debe tener un objeto GeoJSON válido.')
 

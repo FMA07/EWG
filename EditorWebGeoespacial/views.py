@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
-from django.contrib.gis.geos import GEOSGeometry
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion
 from .models import Categoria, Subcategoria, Subclasificacion, Figura
 
@@ -107,10 +107,12 @@ def guardar_por_ajax(request):
                     'tipo': 'subclasificacion',
                     'nombre': subclasificacion.nombre,
                     'id': subclasificacion.id,
+                    'tipo_geometria': subclasificacion.tipo_geometria,
+                    'campos_config': subclasificacion.campos_config,
                 })
             else:
                 return JsonResponse({'success': False, 'errors': form.errors})
-
+        
         else:
             return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
     
@@ -140,3 +142,19 @@ def obtener_contenido_subcategoria(request, subcategoria_id):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+#VISTA PARA CONSEGUIR LA CONFIGURACIÓN DE LA SUBCLASIFICACION
+
+@require_GET
+
+def obtener_config_subclasificacion(request, subclas_id):
+    try:
+        sub = Subclasificacion.objects.get(pk=subclas_id)
+        return JsonResponse({
+            'success': True,
+            'nombre': sub.nombre,
+            'tipo_geometria': sub.tipo_geometria,
+            'campos': sub.campos_config
+        })
+    except Subclasificacion.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Subclasificación no encontrada'})
