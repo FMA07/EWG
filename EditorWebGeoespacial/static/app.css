@@ -36,6 +36,14 @@ body, html{
     transition: all 0.2s ease;
 }
 
+.btn-proyectos{
+    background-color: #dddddd;
+    border-style: solid;
+    border-width: 3px;
+    border-color: black;
+    font-weight: bold;
+}
+
 .contenedor-mapa{
     display: flex;
     overflow: hidden;
@@ -83,6 +91,10 @@ body, html{
 .nav-link.dropdown-toggle.show {
     background-color: transparent !important;
     color: #70d9bd !important;
+}
+
+.offcanvas-end{
+    width: 500px !important;
 }
 
 #togglerBarra{

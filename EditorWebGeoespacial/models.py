@@ -9,11 +9,12 @@ class Proyecto(models.Model):
     nombre              = models.CharField(max_length=100)
     autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     fecha_creacion      = models.DateTimeField(auto_now_add=True)
+    categoria           = models.ManyToManyField('Categoria', related_name= 'proyectos')
 
 #_____________________________________//CAPAS, CATEGORIAS Y SUBCATEGORIAS\\___________________
 
 class Categoria(models.Model):
-    nombre = models.CharField(max_length=100) #Ejemplo, Ambiental, Servicios, Seguridad, Vialidad, etc
+    nombre              = models.CharField(max_length=100) #Ejemplo, Ambiental, Servicios, Seguridad, Vialidad, etc
 
     def __str__(self):
         return self.nombre
@@ -31,7 +32,6 @@ class Subclasificacion(models.Model):
         ('LineString', 'PoliLínea'),
         ('Polygon', 'Polígono'),
     ]
-    proyecto            = models.ForeignKey(Proyecto, on_delete=models.CASCADE)
     categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
     nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos

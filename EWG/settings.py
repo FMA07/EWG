@@ -78,9 +78,9 @@ WSGI_APPLICATION = 'EWG.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'EWG',
-        'USER': 'adminFelipe',
-        'PASSWORD': 'ContraseñaBD',
+        'NAME': 'ewg',
+        'USER': 'admin',
+        'PASSWORD': 'admin123',
         'HOST': 'localhost',
         'PORT': '5432',
     }

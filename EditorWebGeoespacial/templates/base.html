@@ -16,7 +16,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    {% if request.resolver_match.url_name != 'registro' and request.resolver_match.url_name != 'login' %}
+                    {% if request.path == '/editor' %}
                     <li class="nav-item dropdown">
                         <a id="dropdownMapa" class="nav-link dropdown-toggle" href="{% url 'editor' %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Mapa
@@ -27,20 +27,23 @@
                             <li><a id="mapaCalles" class="dropdown-item" href="">Mapa de calles</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a id="mapaRelieve" class="dropdown-item" href="">Mapa de relieve</a></li>
-                        </ul>                        
+                        </ul>                       
                     </li>
-                    {% endif %}
+                    {% endif %} 
                     {% if request.path == '/registro' or request.path == '/login' %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'editor' %}">Mapa</a>
+                        <a class="nav-link" href="{% url 'mapa' %}">Mapa</a>
                     </li>
                     {% endif %}
+                    
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a id="dropdownArchivo" class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Archivo
                         </a>
                         <ul class="dropdown-menu">
+                            <li><a id="botonCrearProyecto" class="dropdown-item" href="{% url 'proyectos' %}">Proyectos</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a id="botonGuardarCapa" class="dropdown-item" href="">Guardar capa</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a id="botonExportarCapa" class="dropdown-item" href="">Exportar capa</a></li>
@@ -51,16 +54,6 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
-                    {% if not user.is_authenticated and request.resolver_match.url_name != 'registro' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'registro' %}">Registrarse</a>
-                        </li>
-                    {% endif %}
-                    {% if not user.is_authenticated and request.resolver_match.url_name != 'login' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Iniciar sesión</a>
-                        </li>
-                    {% endif %}
                     {% if user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link" href="">{{ user.username }}</a>

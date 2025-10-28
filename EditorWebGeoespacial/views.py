@@ -1,12 +1,14 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion
-from .models import Categoria, Subcategoria, Subclasificacion, Figura
+from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion, FormularioProyecto
+from .models import Categoria, Subcategoria, Subclasificacion, Proyecto, Figura
 
 # Create your views here.
 
+@login_required
 def editor(request):    
     formCategoria = FormularioCategoria(data= request.POST, files= request.FILES)
     formSubcategoria = FormularioSubcategoria(data= request.POST, files= request.FILES)
@@ -42,6 +44,27 @@ def editor(request):
     }
     
     return render(request, 'editor.html', context)
+
+@login_required
+def proyectos(request):
+    if request.method == 'POST':
+        formProyecto = FormularioProyecto(request.POST, request.FILES)
+        if formProyecto.is_valid():
+            formProyecto.save()
+            return redirect('proyectos')
+        else:
+            print("Errores en el formulario: ", formProyecto.errors)
+
+    else:
+        formProyecto = FormularioProyecto()
+    
+    proyectos = Proyecto.objects.all()
+
+    context = {
+        "proyectos": proyectos,
+        "formProyecto": formProyecto,
+    }
+    return render(request, 'proyectos.html', context)
 
 def mapa(request):
     return render(request, 'mapa.html')

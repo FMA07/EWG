@@ -545,7 +545,7 @@
                     newLi.className = 'lista-categorias';
                     
                     const contenedorCategorias = document.createElement('div');
-                    contenedorCategorias.className('contenedor-categorias');
+                    contenedorCategorias.className ='contenedor-categorias';
 
                     const checkbox = document.createElement('button');
                     checkbox.className = 'form-check-input subitem-checkbox';
@@ -586,12 +586,19 @@
                     subcategoriaForm.reset();
                     modal.hide();
 
-                    const categoriaId = subclasForm.querySelector('#id_categoria').value;
-                    const listaCategoria = document.querySelector(`.boton-categorias-toggle[data-id="${categoriaId}"]`).closest('.lista-categorias')
+                    const categoriaSelect = subcategoriaForm.querySelector('#id_categoria');
+                    const categoriaId = categoriaSelect ? categoriaSelect.value : null;
 
-                    if (listaCategoria) {
+                    if (categoriaId) {
+                        const botonCategoria = document.querySelector(`.boton-categorias-toggle[data-id='${categoriaId}']`);
+                        const listaCategoria = botonCategoria ? botonCategoria.closest('.lista-categorias') : null;
+
+                        if (listaCategoria) {
                         fetchContenidoCategoria(categoriaId, listaCategoria);
+                        }
                     }
+
+                    
                 } else {
                     console.error("Error:", data.errors);
                 }
