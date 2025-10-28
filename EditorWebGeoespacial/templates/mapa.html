@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mapa{% endblock %}
+{% block content %}
+<div class="contenedor-mapa">
+    <div id="map">
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<!--------------------------------------LEAFLET Y MAPA DE OPS------------------------------------>
+<!--Este link y script provienen de leaflet. Cargan los íconos y funcionalidades-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+
+
+<!--ESTE SCRIPT CARGA LOS DIFERENTES TILESETS Y DESPUÉS CARGA EL MAPA, INICIANDO CON EL DE LAS CALLES-->
+<script>
+    const calles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    });
+    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles © Esri'
+    });
+    const relieve = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenTopoMap contributors'
+    })
+
+    const defaultLat = -33.03853;
+    const defaultLng = -71.60666;
+    const defaultZoom = 14;
+    var southWest = L.latLng(-33.367279, -71.78279122251949);
+    var northEast = L.latLng(-32.979154, -71.331662);
+    var limitesMapa = L.latLngBounds(southWest, northEast);
+
+    let latGuardada = localStorage.getItem('mapCenterLat');
+    let lngGuardada = localStorage.getItem('mapCenterLng');
+    let zoomGuardado = localStorage.getItem('mapZoom');
+
+    const latInicial = latGuardada ? parseFloat(latGuardada) : defaultLat;
+    const lngInicial = lngGuardada ? parseFloat(lngGuardada) : defaultLng;
+    const zoomInicial = zoomGuardado ? parseInt(zoomGuardado) : defaultZoom;
+
+    var map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
+    calles.addTo(map);
+    map.setMaxBounds(limitesMapa);
+    
+
+    //FUNCION PARA GUARDAR LA VISTA ACTUAL EN LOCALSTORGAGE
+    function guardarVista(){
+        localStorage.setItem('mapCenterLat', map.getCenter().lat);
+        localStorage.setItem('mapCenterLng', map.getCenter().lng);
+        localStorage.setItem('mapZoom', map.getZoom());
+    }
+
+    map.on('moveend', guardarVista);
+</script>
+<!--ESTE SCRIPT PERMITE SELECCIONAR EL TILESET DEL MAPA-->
+<script>
+    let currentLayer = calles;
+        
+    const edicionesLayer = L.layerGroup().addTo(map);
+        
+    function cambiarMapa(layer){
+        if (currentLayer) map.removeLayer(currentLayer);
+        layer.addTo(map);
+        currentLayer = layer;
+    }
+    //listeners para las distintas opciones del menú de mapas
+    document.getElementById('mapaSatelital').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(satelite);
+    });
+    document.getElementById('mapaCalles').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(calles);
+    });
+    document.getElementById('mapaRelieve').addEventListener('click', function(e){
+        e.preventDefault();
+        cambiarMapa(relieve);
+    });
+
+</script>
+{% endblock %}

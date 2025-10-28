@@ -454,6 +454,7 @@
         function guardarCapa(){
             var geojson = window.editableLayers.toGeoJSON();
             localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
+            console.log("Capa guardada en localStorage");
         }
 
         window.guardarCapa = guardarCapa
@@ -462,31 +463,38 @@
         function attachEditListeners(layer){
             layer.on("pm:edit", guardarCapa);
             layer.on("pm:dragend", guardarCapa);
-            layer.on("pm:remove", guardarCapa);
+            
 
             layer.on('click', function(e){
                 mostrarDatosOffcanvas(e.target);
             } )
         }
+        map.on("pm:remove", function(e){
+                console.log('pm:remove event', e);
 
+                const removedLayer = e && e.layer ? e.layer : null;
+
+                setTimeout(() => {
+                    try{
+                        if (removedLayer && window.editableLayers) {
+                            window.editableLayers.removeLayer(removedLayer);
+                            console.log('Layer removido de editableLayers: ', removedLayer);
+                        }
+
+                        if ( window.editableLayers) {
+                            const geojson = window.editableLayers.toGeoJSON();
+                            localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
+                            console.log('LocalStorage actualizado. Features: ', geojson.features ? geojson.features.length : 0);
+                        } else {
+                            console.warn('editableLayers no está definido');
+                        }
+                    } catch (err) {
+                        console.error('Error actualizando localStorage tras pm:remove:', err);
+                    }
+                }, 0)
+            });
         window.attachEditListeners = attachEditListeners;
 
-        //CREAR UNA NUEVA FIGURA
-        map.on("pm:create", e =>{
-            const layer = e.layer;
-            editableLayers.addLayer(layer);
-            attachEditListeners(layer);
-            guardarCapa();
-            
-            window.geometriaActual = layer.toGeoJSON().geometry;
-
-            if (window.subclasSeleccionada) {
-                mostrarFormularioFigura(window.subclasSeleccionada)
-            } else {
-                alert("Selecciona una subclasificación antes de dibujar");
-                layer.remove();
-            }
-        })
         
         cargarFiguras(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
 
@@ -676,6 +684,83 @@
                 modal.hide();
             }
         }
+        //Para asignar datos a la figura creada
+        function asignarDatosFigura(layer){
+            if (!window.subclasSeleccionada){
+                alert('Seleccione una subclasificación antes de crear una figura');
+                layer.remove();
+                return;
+            }
+
+            const sub = window.subclasSeleccionada;
+            const offcanvasElement = document.getElementById('seccionTablas');
+            const offcanvasBody = document.getElementById('cuerpoTablas');
+
+            offcanvasBody.innerHTML = '';
+
+            if (sub.campos && sub.campos.length > 0) {
+                const form = document.createElement('form');
+                form.id = 'atributosFiguraForm';
+
+                sub.campos.forEach(campo => {
+                    const group = document.createElement('div');
+                    group.className = 'mb-3';
+
+                    const input = document.createElement('input');
+                    input.className = 'form-control';
+                    input.name = campo.nombre;
+                    input.type = campo.tipo === 'number' ? 'number' : 'text';
+                    input.placeholder = `Ingrese ${campo.nombre.toLowerCase()}`;
+                    
+                    group.appendChild(input);
+                    form.appendChild(group);
+                })
+
+                const btnGuardar = document.createElement('button');
+                btnGuardar.type = 'submit';
+                btnGuardar.textContent = 'Guardar figura';
+                btnGuardar.className = 'btn btn-primary';
+                btnGuardar.onclick = function() {
+                    const datos = {};
+                    form.querySelectorAll('input').forEach(input => {
+                        datos[inp.name] = inp.value;
+                    });
+
+                    const figuraData = {
+                        subclasificacion_id: sub.id,
+                        atributos: datos,
+                        geometria: layer.toGeoJSON().geometry,
+                    };
+
+                    console.log('Figura lista para guardar: ', figuraData);
+
+                    fetch('/guardar_figura/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken,
+                        },
+                        body: JSON.stringify(figuraData),
+                    })
+                    .then(res => res.json())
+                    .then(data => console.log('Guardado: ', data))
+                    .catch(err => console.error('Error guardando figura: ', err));
+                }
+
+                form.appendChild(btnGuardar);
+                offcanvasBody.appendChild(form);
+                
+                let offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                if (!offcanvas){
+                    offcanvas = new bootstrap.Offcanvas(offcanvasElement);
+                }
+                offcanvas.show();
+                
+            } else {
+                const offcanvas = new bootstrap.Offcanvas(offcanvasElement);
+                offcanvas.show();
+            }
+        }
 
         function guardarFigura(atributos){
             const figura = {
@@ -788,7 +873,7 @@
             layer.feature.properties = newProperties;
 
             
-            if (wCapa) {
+            if (layer) {
                 window.guardarCapa();
                 alert('Atributos guardados');
             }
@@ -809,20 +894,19 @@
                     alert('Error cargando subclasificación');
                     return;
                 }
-                
+
                 window.subclasSeleccionada = data;
 
                 map.pm.removeControls();
                 map.pm.Toolbar.changeControlOrder([]);
-                map.pm.disableDraw('Marker');
-                map.pm.disableDraw('Line');
-                map.pm.disableDraw('Polygon');
+                map.off('pm:create');
+                
 
                 const barraHerramientas = {
                      
                     position: 'bottomleft',
                     drawMarker: false,
-                    drawPolyline: false,
+                    drawLine: false,
                     drawPolygon:false,
                     drawCircle: false,  
                     drawCircleMarker: false,
@@ -839,18 +923,43 @@
                 switch (data.tipo_geometria) {
                     case 'Point':
                         barraHerramientas.drawMarker = true;
+                        barraHerramientas.drawPolyline = false;
                         break;
 
                     case 'LineString':
-                        barraHerramientas.drawPolyline = true;
+                        barraHerramientas.drawLine = true;
                         break;
 
                     case 'Polygon':
                         barraHerramientas.drawPolygon = true;
+                        barraHerramientas.drawPolyline = false;
                         break;
                 }
 
+                if (data.tipo_geometria === 'Point') map.pm.enableDraw('Marker');
+                if (data.tipo_geometria === 'LineString') map.pm.enableDraw('Line');
+                if (data.tipo_geometria === 'Polygon') map.pm.enableDraw('Polygon');
+
                 map.pm.addControls(barraHerramientas);
+                
+                //CREAR UNA NUEVA FIGURA
+                map.once("pm:create", e =>{
+                    map.pm.disableDraw();
+                    const layer = e.layer;
+                    editableLayers.addLayer(layer);
+                    attachEditListeners(layer);
+                    guardarCapa();
+            
+                    window.geometriaActual = layer.toGeoJSON().geometry;
+
+                    if (window.subclasSeleccionada) {
+                        asignarDatosFigura(window.subclasSeleccionada)
+                    } else {
+                        alert("Selecciona una subclasificación antes de dibujar");
+                        layer.remove();
+                    }
+                })
+
             } catch (err) {
                 console.error("Error activando las herramientas de dibujo", err)
             }

@@ -3,6 +3,13 @@ from django.core.exceptions import ValidationError
 from django.contrib.gis.db import models #PARA QUE FUNCIONE HAY QUE INSTALAR GDAL Y POSTGIS
 
 # Create your models here.
+#__________________________________________//PROYECTO\\______________________________________
+
+class Proyecto(models.Model):
+    nombre              = models.CharField(max_length=100)
+    autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    fecha_creacion      = models.DateTimeField(auto_now_add=True)
+
 #_____________________________________//CAPAS, CATEGORIAS Y SUBCATEGORIAS\\___________________
 
 class Categoria(models.Model):
@@ -21,9 +28,10 @@ class Subcategoria(models.Model):
 class Subclasificacion(models.Model):
     OPCIONES_GEOMETRIA  = [
         ('Point', 'Punto'),
-        ('MultiLinestring', 'PoliLínea'),
+        ('LineString', 'PoliLínea'),
         ('Polygon', 'Polígono'),
     ]
+    proyecto            = models.ForeignKey(Proyecto, on_delete=models.CASCADE)
     categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
     nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos

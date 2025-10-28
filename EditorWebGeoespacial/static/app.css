@@ -40,6 +40,7 @@ body, html{
     display: flex;
     overflow: hidden;
     width: 100%;
+    height: calc(100vh - 52px);
 }
 
 .dropdown-item{
@@ -188,6 +189,7 @@ body, html{
     flex-direction: column;
     position: relative;
     z-index: 1000;
+    height: 100%;
 }
 
 #sidebar-body{
@@ -197,8 +199,9 @@ body, html{
 #sidebar-content{
     flex-grow: 1;
     overflow-y: auto;
-    margin-top: -52px;
     margin-right: -1px;
+    margin-top: -55px;
+    margin-bottom: 55px;
 }
 
 .sidebar-divider{

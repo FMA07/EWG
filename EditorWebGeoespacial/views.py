@@ -43,6 +43,9 @@ def editor(request):
     
     return render(request, 'editor.html', context)
 
+def mapa(request):
+    return render(request, 'mapa.html')
+
 def pagregistro(request):
     if request.method == 'POST':
         form = RegistroForm(request.POST)
@@ -54,13 +57,11 @@ def pagregistro(request):
         form = RegistroForm()
     return render(request, 'registro.html', {'form': form})
 
-def paglogin(request):
-    return render(request, 'login.html')
 
 #Vista para eliminar el localStorage al cerrar sesión
 def paglogout(request):
     logout(request)
-    response = redirect('editor')
+    response = redirect('mapa')
     response.set_cookie('clear_local_storage', '1', max_age=5)
     return response
 
@@ -150,6 +151,12 @@ def obtener_contenido_subcategoria(request, subcategoria_id):
 def obtener_config_subclasificacion(request, subclas_id):
     try:
         sub = Subclasificacion.objects.get(pk=subclas_id)
+        import json
+
+        try:
+            campos = json.loads(sub.campos_config) if isinstance(sub.campos_config, str) else sub.campos_config
+        except json.JSONDecodeError:
+            campos = []
         return JsonResponse({
             'success': True,
             'nombre': sub.nombre,
