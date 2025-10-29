@@ -50,14 +50,23 @@ def proyectos(request):
     if request.method == 'POST':
         formProyecto = FormularioProyecto(request.POST, request.FILES)
         if formProyecto.is_valid():
-            formProyecto.save()
+            proyecto = formProyecto.save(commit=False)
+            proyecto.autor = request.user
+            proyecto.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                proyectos = Proyecto.objects.all().values('id', 'nombre', 'autor__username', 'fecha_creacion')
+                return JsonResponse({
+                    'success': True,
+                    'proyectos': list(proyectos),
+                    })
             return redirect('proyectos')
         else:
-            print("Errores en el formulario: ", formProyecto.errors)
-
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': formProyecto.errors})
+            return redirect('proyectos')
     else:
         formProyecto = FormularioProyecto()
-    
+        
     proyectos = Proyecto.objects.all()
 
     context = {

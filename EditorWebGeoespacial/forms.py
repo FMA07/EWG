@@ -28,6 +28,13 @@ class FormularioSubclasificacion(forms.ModelForm):
         fields = "__all__"
 
 class FormularioProyecto(forms.ModelForm):
+    categorias = forms.ModelMultipleChoiceField(
+        queryset=Categoria.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+        label="Categorías",
+    )
+
     class Meta:
         model = Proyecto
-        fields = "__all__"
+        fields = ["nombre"]

@@ -11,6 +11,9 @@ class Proyecto(models.Model):
     fecha_creacion      = models.DateTimeField(auto_now_add=True)
     categoria           = models.ManyToManyField('Categoria', related_name= 'proyectos')
 
+    def __str__(self):
+        return f'{self.nombre}. Fecha de creación: {self.fecha_creacion}. Autor: {self.autor.username}'
+
 #_____________________________________//CAPAS, CATEGORIAS Y SUBCATEGORIAS\\___________________
 
 class Categoria(models.Model):

@@ -573,6 +573,8 @@
             e.preventDefault();
             const formData = new FormData(subcategoriaForm);
             formData.append('tipo_form', 'subcategoria');
+            const categoriaSelect = subcategoriaForm.querySelector('#id_categoria');
+            const categoriaId = categoriaSelect ? categoriaSelect.value : null;
 
             fetch('guardar_por_ajax', {
                 method: 'POST',
@@ -586,12 +588,14 @@
                     subcategoriaForm.reset();
                     modal.hide();
 
-                    const categoriaSelect = subcategoriaForm.querySelector('#id_categoria');
-                    const categoriaId = categoriaSelect ? categoriaSelect.value : null;
-
                     if (categoriaId) {
                         const botonCategoria = document.querySelector(`.boton-categorias-toggle[data-id='${categoriaId}']`);
                         const listaCategoria = botonCategoria ? botonCategoria.closest('.lista-categorias') : null;
+                        const listaSubcategoriasUl = listaCategoria ? listaCategoria.querySelector('.lista-subcategorias') : null;
+
+                        if (listaSubcategoriasUl) {
+                            listaSubcategoriasUl.style.display = 'block';
+                        }
 
                         if (listaCategoria) {
                         fetchContenidoCategoria(categoriaId, listaCategoria);
@@ -611,7 +615,8 @@
             e.preventDefault();
             const formData = new FormData(subclasForm);
             formData.append('tipo_form', 'subclasificacion');
-
+            const categoriaSelect = subclasForm.querySelector('#id_categoria');
+            const categoriaId = categoriaSelect ? categoriaSelect.value : null;
             const camposConfig = document.getElementById('id_campos_config').value;
             try{
                 JSON.parse(camposConfig);
@@ -632,6 +637,21 @@
                     const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoSubclasificacion'));
                     subclasForm.reset();
                     modal.hide();
+
+                    if (categoriaId) {
+                        const botonCategoria = document.querySelector(`.boton-categorias-toggle[data-id='${categoriaId}']`);
+                        const listaCategoria = botonCategoria ? botonCategoria.closest('.lista-categorias') : null;
+                        const listaSubcategoriasUl = listaCategoria ? listaCategoria.querySelector('.lista-subcategorias') : null;
+
+                        if (listaSubcategoriasUl) {
+                            listaSubcategoriasUl.style.display = 'block';
+                        }
+
+                        if (listaCategoria) {
+                            fetchContenidoCategoria(categoriaId, listaCategoria);
+                        }
+                    }
+
                 } else {
                     console.error("Error: ", data.errors);
                 }
