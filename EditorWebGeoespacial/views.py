@@ -3,8 +3,10 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
+from django.contrib.gis.geos import GEOSGeometry
 from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion, FormularioProyecto
 from .models import Categoria, Subcategoria, Subclasificacion, Proyecto, Figura
+import json
 
 # Create your views here.
 
@@ -192,6 +194,7 @@ def obtener_config_subclasificacion(request, subclas_id):
             campos = []
         return JsonResponse({
             'success': True,
+            'id': sub.id,
             'nombre': sub.nombre,
             'tipo_geometria': sub.tipo_geometria,
             'campos': sub.campos_config
@@ -206,3 +209,38 @@ def eliminar_proyecto(request, proyecto_id):
         proyecto.delete()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+
+#Vista para guardar una nueva figura con sus atributos
+@login_required
+def guardar_figura(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            print("Datos recibidos: ", data)
+
+            subclas_id = data.get('subclasificacion_id')
+            atributos = data.get('atributos')
+            geometria = data.get('geometria')
+
+            if not subclas_id or not geometria:
+                return JsonResponse({'success': False, 'error': 'Faltan datos'})
+            
+            subclasificacion = Subclasificacion.objects.get(pk=subclas_id)
+
+            geometria_json = data.get('geometria')
+            geometria = GEOSGeometry(json.dumps(geometria_json))
+
+            figura = Figura(
+                subclasificacion = subclasificacion,
+                atributos = atributos,
+                coordenadas = geometria,
+            )
+            figura.save()
+
+            return JsonResponse({'success': True, 'message': 'Figura guardada correctamente'})
+        
+        except Exception as e:
+            print('Error guardando figura: ', e)
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        
+    return JsonResponse({'success': False, 'error': 'Método no permitido'}, status = 405)

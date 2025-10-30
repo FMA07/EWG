@@ -14,4 +14,5 @@ urlpatterns = [
     path('obtener_contenido_subcategoria/<int:subcategoria_id>/', views.obtener_contenido_subcategoria, name='obtener_contenido_subcategoria'),
     path('obtener_config_subclasificacion/<int:subclas_id>/', views.obtener_config_subclasificacion, name= 'obtener_config_subclasificacion'),
     path('eliminar_proyecto/<int:proyecto_id>/', views.eliminar_proyecto, name='eliminar_proyecto'),
+    path('guardar_figura/', views.guardar_figura, name='guardar_figura'),
     ]

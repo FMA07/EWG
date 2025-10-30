@@ -738,20 +738,26 @@
                     input.name = campo.nombre;
                     input.type = campo.tipo === 'number' ? 'number' : 'text';
                     input.placeholder = `Ingrese ${campo.nombre.toLowerCase()}`;
-                    
+
                     group.appendChild(input);
                     form.appendChild(group);
-                })
+                });
 
                 const btnGuardar = document.createElement('button');
                 btnGuardar.type = 'submit';
                 btnGuardar.textContent = 'Guardar figura';
                 btnGuardar.className = 'btn btn-primary';
-                btnGuardar.onclick = function() {
+
+                btnGuardar.addEventListener('click', (event) => {
+                    event.preventDefault(); 
+
                     const datos = {};
                     form.querySelectorAll('input').forEach(input => {
-                        datos[inp.name] = inp.value;
+                        datos[input.name] = input.value;
                     });
+
+                    console.log('Layer recibido:', layer);
+                    console.log('Tiene toGeoJSON?:', typeof layer.toGeoJSON);
 
                     const figuraData = {
                         subclasificacion_id: sub.id,
@@ -770,19 +776,24 @@
                         body: JSON.stringify(figuraData),
                     })
                     .then(res => res.json())
-                    .then(data => console.log('Guardado: ', data))
+                    .then(data => {
+                        console.log('Guardado: ', data);
+                        alert('Figura guardada correctamente');
+                        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                        offcanvas?.hide(); 
+                    })
                     .catch(err => console.error('Error guardando figura: ', err));
-                }
+                });
 
                 form.appendChild(btnGuardar);
                 offcanvasBody.appendChild(form);
-                
+
                 let offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
                 if (!offcanvas){
                     offcanvas = new bootstrap.Offcanvas(offcanvasElement);
                 }
                 offcanvas.show();
-                
+
             } else {
                 const offcanvas = new bootstrap.Offcanvas(offcanvasElement);
                 offcanvas.show();
@@ -910,87 +921,121 @@
         }
 
         //PERMITE EL MODO EDICIÓN SÓLO CON LA HERRAMIENTA ASOCIADA A LA SUBCLASE
-        async function activarMododibujo(subclasId){
-            try {
-                const response = await fetch(`/obtener_config_subclasificacion/${subclasId}/`);
-                const data = await response.json();
+        async function activarMododibujo(subclasId) {
+        try {
+            const response = await fetch(`/obtener_config_subclasificacion/${subclasId}/`);
+            const data = await response.json();
 
-                console.log("Respuesta subclasificación:", data);
+            console.log("Respuesta subclasificación:", data);
 
-                if (!data || data.success === false) {
-                    alert('Error cargando subclasificación');
-                    return;
-                }
+            if (!data || data.success === false) {
+                alert('Error cargando subclasificación');
+                return;
+            }
 
-                window.subclasSeleccionada = data;
+            window.subclasSeleccionada = data;
 
-                map.pm.removeControls();
-                map.pm.Toolbar.changeControlOrder([]);
-                map.off('pm:create');
-                
+            map.pm.removeControls();
+            map.pm.Toolbar.changeControlOrder([]);
+            map.off('pm:create');
 
-                const barraHerramientas = {
-                     
-                    position: 'bottomleft',
-                    drawMarker: false,
-                    drawLine: false,
-                    drawPolygon:false,
-                    drawCircle: false,  
-                    drawCircleMarker: false,
-                    drawRectangle: false,
-                    rotateMode: false,
-                    editMode: true,
-                    dragMode: true,
-                    removalMode: true,
-                    cutPolygon: false,
-                    drawText: false,
-                    
-                }
+            const barraHerramientas = {
+                position: 'bottomleft',
+                drawMarker: false,
+                drawLine: false,
+                drawPolygon: false,
+                drawCircle: false,
+                drawCircleMarker: false,
+                drawRectangle: false,
+                rotateMode: false,
+                editMode: true,
+                dragMode: true,
+                removalMode: true,
+                cutPolygon: false,
+                drawText: false,
+            };
 
-                switch (data.tipo_geometria) {
-                    case 'Point':
-                        barraHerramientas.drawMarker = true;
-                        barraHerramientas.drawPolyline = false;
-                        break;
+            switch (data.tipo_geometria) {
+                case 'Point':
+                    barraHerramientas.drawMarker = true;
+                    break;
+                case 'LineString':
+                    barraHerramientas.drawLine = true;
+                    break;
+                case 'Polygon':
+                    barraHerramientas.drawPolygon = true;
+                    break;
+            }
 
-                    case 'LineString':
-                        barraHerramientas.drawLine = true;
-                        break;
+            if (data.tipo_geometria === 'Point') map.pm.enableDraw('Marker');
+            if (data.tipo_geometria === 'LineString') map.pm.enableDraw('Line');
+            if (data.tipo_geometria === 'Polygon') map.pm.enableDraw('Polygon');
 
-                    case 'Polygon':
-                        barraHerramientas.drawPolygon = true;
-                        barraHerramientas.drawPolyline = false;
-                        break;
-                }
+            map.pm.addControls(barraHerramientas);
 
-                if (data.tipo_geometria === 'Point') map.pm.enableDraw('Marker');
-                if (data.tipo_geometria === 'LineString') map.pm.enableDraw('Line');
-                if (data.tipo_geometria === 'Polygon') map.pm.enableDraw('Polygon');
+            // CREAR UNA NUEVA FIGURA
+            map.once("pm:create", async (e) => {
+                map.pm.disableDraw();
+                const layer = e.layer;
+                editableLayers.addLayer(layer);
 
-                map.pm.addControls(barraHerramientas);
-                
-                //CREAR UNA NUEVA FIGURA
-                map.once("pm:create", e =>{
-                    map.pm.disableDraw();
-                    const layer = e.layer;
-                    editableLayers.addLayer(layer);
-                    attachEditListeners(layer);
-                    guardarCapa();
-            
-                    window.geometriaActual = layer.toGeoJSON().geometry;
+                try {
+                    const geojson = layer.toGeoJSON().geometry;
+                    window.geometriaActual = geojson;
 
-                    if (window.subclasSeleccionada) {
-                        asignarDatosFigura(window.subclasSeleccionada)
-                    } else {
+                    if (!window.subclasSeleccionada) {
                         alert("Selecciona una subclasificación antes de dibujar");
                         layer.remove();
+                        return;
                     }
-                })
 
-            } catch (err) {
-                console.error("Error activando las herramientas de dibujo", err)
-            }
+                    const figuraData = {
+                        subclasificacion_id: window.subclasSeleccionada.id,
+                        atributos: window.subclasSeleccionada.atributos || {},
+                        geometria: geojson
+                    };
+
+                    console.log("Enviando Figura:", figuraData);
+
+                    const response = await fetch("/guardar_figura/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCookie("csrftoken")
+                        },
+                        body: JSON.stringify(figuraData)
+                    });
+
+                    const result = await response.json();
+                    console.log("Respuesta del servidor:", result);
+
+                    if (result.success) {
+                        alert("Figura guardada correctamente (Quitar esto a futuro)");
+                    } else {
+                        alert("Error al guardar la figura: " + result.error);
+                        layer.remove();
+                    }
+                } catch (error) {
+                    console.error("Error al guardar figura:", error);
+                    alert("Ocurrió un error al guardar la figura");
+                }
+
+                attachEditListeners(layer);
+                guardarCapa();
+
+                if (window.subclasSeleccionada) {
+                    asignarDatosFigura(layer);
+                } else {
+                    alert("Selecciona una subclasificación antes de dibujar");
+                    layer.remove();
+                }
+            });
+
+        } catch (err) {
+            console.error("Error activando las herramientas de dibujo", err);
         }
+    }
+
     });
 </script>
 {% endblock %}
