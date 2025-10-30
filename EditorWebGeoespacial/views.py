@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -53,12 +53,19 @@ def proyectos(request):
             proyecto = formProyecto.save(commit=False)
             proyecto.autor = request.user
             proyecto.save()
+            formProyecto.save_m2m()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                proyectos = Proyecto.objects.all().values('id', 'nombre', 'autor__username', 'fecha_creacion')
-                return JsonResponse({
-                    'success': True,
-                    'proyectos': list(proyectos),
+                proyectos_queryset = Proyecto.objects.select_related('autor').prefetch_related('categoria').order_by('fecha_creacion')
+                proyectos_data = []
+                for proyecto in proyectos_queryset:
+                    categorias_list = ", ".join([c.nombre for c in proyecto.categoria.all()])
+                    proyectos_data.append({
+                        'nombre': proyecto.nombre,
+                        'autor__username': proyecto.autor.username,
+                        'fecha_creacion': proyecto.fecha_creacion.strftime('%Y-%m-%d %H:%M'),
+                        'categorias_list': categorias_list,
                     })
+                return JsonResponse({'success': True, 'proyectos': proyectos_data})
             return redirect('proyectos')
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -66,14 +73,8 @@ def proyectos(request):
             return redirect('proyectos')
     else:
         formProyecto = FormularioProyecto()
-        
-    proyectos = Proyecto.objects.all()
-
-    context = {
-        "proyectos": proyectos,
-        "formProyecto": formProyecto,
-    }
-    return render(request, 'proyectos.html', context)
+        proyectos = Proyecto.objects.all()
+        return render(request, 'proyectos.html', {'proyectos': proyectos, 'formProyecto': formProyecto})
 
 def mapa(request):
     return render(request, 'mapa.html')
@@ -197,3 +198,11 @@ def obtener_config_subclasificacion(request, subclas_id):
         })
     except Subclasificacion.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Subclasificación no encontrada'})
+    
+# Vista para eliminar un proyecto
+def eliminar_proyecto(request, proyecto_id):
+    proyecto = get_object_or_404(Proyecto, pk=proyecto_id)
+    if request.method == 'POST':
+        proyecto.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Método no permitido.'})

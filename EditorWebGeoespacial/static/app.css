@@ -44,6 +44,30 @@ body, html{
     font-weight: bold;
 }
 
+.btn-proyectos:hover{
+    background-color: #1899f0;
+    border-style: solid;
+    border-width: 3px;
+    border-color: black;
+    font-weight: bold;
+}
+
+.btn-eliminar{
+    background-color: #dddddd;
+    border-style: solid;
+    border-width: 3px;
+    border-color: black;
+    font-weight: bold;
+}
+
+.btn-eliminar:hover{
+    background-color: red;
+    border-style: solid;
+    border-width: 3px;
+    border-color: black;
+    font-weight: bold;
+}
+
 .contenedor-mapa{
     display: flex;
     overflow: hidden;

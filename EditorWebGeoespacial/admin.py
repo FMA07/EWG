@@ -2,7 +2,14 @@ from django.contrib import admin
 from .models import Figura, Capa, Sector, Tipo_de_via, Categoria, Subcategoria, Subclasificacion, Microbasural, Cuarteles_de_bomberos, Grifos, Proyecto
 
 # Register your models here.
-admin.site.register(Proyecto)
+class ProyectoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'autor', 'fecha_creacion', 'get_categorias_list')
+    
+    def get_categorias_list(self, obj):
+        return ", ".join([c.nombre for c in obj.categoria.all()])
+    get_categorias_list.short_description = 'Categorías asociadas'
+
+admin.site.register(Proyecto, ProyectoAdmin)
 admin.site.register(Capa)
 admin.site.register(Figura)
 admin.site.register(Sector)

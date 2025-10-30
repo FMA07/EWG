@@ -24,7 +24,7 @@
                     {% for categoria in categorias %}
                     <li class="lista-categorias">
                         <div class="contenedor-categorias">
-                            <button class="form-check-input" type="checkbox"></button>
+                            <input class="form-check-input" type="checkbox"></input>
                             <button class="sidebar-options boton-categorias-toggle" data-id="{{ categoria.id }}">
                                 {{categoria.nombre}}
                             </button>
@@ -298,7 +298,7 @@
                             const itemContainer = document.createElement('div');
                             itemContainer.className = 'contenedor-subcategorias';
 
-                            const checkbox = document.createElement('button');
+                            const checkbox = document.createElement('input');
                             checkbox.className = 'form-check-input subitem-checkbox'
                             checkbox.setAttribute('type', 'checkbox');
 
@@ -368,7 +368,7 @@
                     const itemContainer = document.createElement('div');
                     itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
 
-                    const checkbox = document.createElement('button');
+                    const checkbox = document.createElement('input');
                     checkbox.className = 'form-check-input subitem-checkbox';
                     checkbox.setAttribute('type', 'checkbox');
 
@@ -547,7 +547,7 @@
                     const contenedorCategorias = document.createElement('div');
                     contenedorCategorias.className ='contenedor-categorias';
 
-                    const checkbox = document.createElement('button');
+                    const checkbox = document.createElement('input');
                     checkbox.className = 'form-check-input subitem-checkbox';
                     checkbox.setAttribute('type', 'checkbox');
                     
