@@ -53,6 +53,7 @@
                 </ul>
             </div>
         </div>
+        <!--Sección simbología-->
     </div>
     <div class="modal fade" id="modalEstaticoCategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
         <div class="modal-dialog">
@@ -438,15 +439,24 @@
         window.editableLayers = L.featureGroup().addTo(map);
 
         function cargarFiguras(){
-            var figurasGuardadas = localStorage.getItem('todasLasFiguras');
-            if (figurasGuardadas) {
-                var geojson = JSON.parse(figurasGuardadas);
+            const figurasGuardadas = localStorage.getItem('todasLasFiguras');
+            if(!figurasGuardadas) return;
+
+            try{
+                const geojson = JSON.parse(figurasGuardadas);
                 L.geoJSON(geojson, {
                     onEachFeature: function(feature, layer){
-                        editableLayers.addLayer(layer);
+                        layer.feature = feature;
+                        layer.feature.properties = feature.properties || {};
+                        
                         attachEditListeners(layer);
+                        editableLayers.addLayer(layer);
                     }
                 }).addTo(map);
+
+                console.log("Figuras restauradas correctamente con atributos: ", geojson.features.length);
+            } catch(error){
+                console.error("Error cargando las figuras desde localStorage: ", error)
             }
         }
         
@@ -485,8 +495,29 @@
                             const geojson = window.editableLayers.toGeoJSON();
                             localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
                             console.log('LocalStorage actualizado. Features: ', geojson.features ? geojson.features.length : 0);
-                        } else {
-                            console.warn('editableLayers no está definido');
+                        } 
+                        
+                        if (removedLayer?.feature?.properties?.id) {
+                            const figuraId = removedLayer.feature.properties.id;
+
+                            fetch(`/eliminar_figura/${figuraId}/`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken'),
+                                },
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    console.log(`Figura ${figuraId} eliminada correctamente del backend`)
+                                } else {
+                                    console.error(`Error al eliminar la figura ${figuraId}: `, data.error)
+                                }
+                            })
+                            .catch(err => console.error('Error al eliminar la figura en el backend: ', err))
+                        }
+                        else {
+                            console.warn('No se encontró un ID de figura en las propiedades del layer.');
                         }
                     } catch (err) {
                         console.error('Error actualizando localStorage tras pm:remove:', err);
@@ -767,6 +798,10 @@
 
                     console.log('Figura lista para guardar: ', figuraData);
 
+                    //Estas dos líneas permiten actualizar la capa para que la figura muestre los atributos asignados
+                    layer.feature = layer.feature || {type: 'Feature', properties: {}};
+                    layer.feature.properties = Object.assign({}, layer.feature.properties, datos);
+
                     fetch('/guardar_figura/', {
                         method: 'POST',
                         headers: {
@@ -778,9 +813,17 @@
                     .then(res => res.json())
                     .then(data => {
                         console.log('Guardado: ', data);
-                        alert('Figura guardada correctamente');
-                        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-                        offcanvas?.hide(); 
+                        if (data.success) {
+                            if (data.id){
+                                layer.feature.properties.id = data.id;
+                            }
+                            guardarCapa();
+                            alert('Figura guardada correctamente');
+                            const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                            offcanvas?.hide(); 
+                        } else {
+                            console.error('Error guardando la figura: ', data.error)
+                        }
                     })
                     .catch(err => console.error('Error guardando figura: ', err));
                 });
@@ -942,7 +985,7 @@
             const barraHerramientas = {
                 position: 'bottomleft',
                 drawMarker: false,
-                drawLine: false,
+                drawPolyline: false,
                 drawPolygon: false,
                 drawCircle: false,
                 drawCircleMarker: false,
@@ -987,33 +1030,6 @@
                         alert("Selecciona una subclasificación antes de dibujar");
                         layer.remove();
                         return;
-                    }
-
-                    const figuraData = {
-                        subclasificacion_id: window.subclasSeleccionada.id,
-                        atributos: window.subclasSeleccionada.atributos || {},
-                        geometria: geojson
-                    };
-
-                    console.log("Enviando Figura:", figuraData);
-
-                    const response = await fetch("/guardar_figura/", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": getCookie("csrftoken")
-                        },
-                        body: JSON.stringify(figuraData)
-                    });
-
-                    const result = await response.json();
-                    console.log("Respuesta del servidor:", result);
-
-                    if (result.success) {
-                        alert("Figura guardada correctamente (Quitar esto a futuro)");
-                    } else {
-                        alert("Error al guardar la figura: " + result.error);
-                        layer.remove();
                     }
                 } catch (error) {
                     console.error("Error al guardar figura:", error);

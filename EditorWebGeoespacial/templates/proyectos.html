@@ -41,6 +41,7 @@
                             <th>Nombre</th>
                             <th>Autor</th>
                             <th>Fecha de creación</th>
+                            <th>Categoría asociadas</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,6 +146,9 @@
                 const seccionTablaProyectos = document.getElementById('seccionTablaProyectos');
                 const offcanvasElement = document.getElementById('formularioProyecto');
                 const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                const checkbox = document.createElement('input')
+                checkbox.className = 'form-check-input'
+                checkbox.type = 'checkbox';
 
                 if (offcanvasInstance) {
                     offcanvasInstance.hide();
@@ -166,7 +170,10 @@
 
                     data.proyectos.forEach(proyecto => {
                         tabla += `<tr>
-                                    <td>${proyecto.nombre}</td>
+                                    <td>
+                                        <input class="form-check-input" type="checkbox" value="${proyecto.id}">
+                                        ${proyecto.nombre}
+                                    </td>
                                     <td>${proyecto.autor__username}</td>
                                     <td>${proyecto.fecha_creacion}</td>
                                     <td>${proyecto.categorias_list}</td>
@@ -185,17 +192,22 @@
         });
     });
 
-    const btnEliminar = document.getElementById('btnEliminar');
-    btnEliminar.addEventListener('click', function(){
+    btnEliminar.addEventListener('click', function() {
         const checkboxes = document.querySelectorAll('#seccionTablaProyectos input[type="checkbox"]:checked');
         const proyectosAEliminar = [];
-        checkboxes.forEach(checkboxes => {
-            proyectosAEliminar.push(checkboxes.value);
-        })
+        checkboxes.forEach(checkbox => {
+            proyectosAEliminar.push(checkbox.value);
+        });
 
-        if(!confirm('¿Está seguro de que desea eliminar los proyectos seleccionados?')){
+        if (proyectosAEliminar.length === 0) {
+            alert("Seleccione al menos un proyecto para eliminar.");
             return;
         }
+
+        if (!confirm('¿Está seguro de que desea eliminar los proyectos seleccionados?')) {
+            return;
+        }
+
         const eliminarPromesas = proyectosAEliminar.map(proyectoId => {
             const url = `/eliminar_proyecto/${proyectoId}/`;
             return fetch(url, {
@@ -214,23 +226,23 @@
             .then(data => {
                 if (data.success) {
                     const row = document.querySelector(`input[value="${proyectoId}"]`).closest('tr');
-                    if (row) {
-                        row.remove();
-                    }
+                    if (row) row.remove();
                     return true;
                 }
                 return false;
-            })
-            Promise.all(eliminarPromesas)
+            });
+        });
+
+        Promise.all(eliminarPromesas)
             .then(() => {
                 alert('Proyectos eliminados correctamente.');
             })
             .catch(error => {
                 console.error('Error al eliminar proyectos:', error);
                 alert(`Ocurrió un error durante la eliminación: ${error.message}`);
-            })
-        })
-        });
+            });
+    });
+
 
         
 </script>

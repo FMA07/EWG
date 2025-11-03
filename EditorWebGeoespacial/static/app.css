@@ -121,6 +121,10 @@ body, html{
     width: 500px !important;
 }
 
+#seccionTablas{
+    height: 400px;
+}
+
 #togglerBarra{
     background-color: white;
 }

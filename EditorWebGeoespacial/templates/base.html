@@ -51,6 +51,14 @@
                             <li><a id="botonImportarCapa" class="dropdown-item" href="">Importar capa</a></li>
                         </ul>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a id="dropdownCapas" class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Capas
+                        </a>
+                        <ul id="menuCapas" class="dropdown-menu">
+                            <li><hr class="dropdown-divider" id="dividerCapas"></li>
+                        </ul>
+                    </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -89,9 +97,26 @@
     <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
 
     <script>
+        window.listaCapas = []
         document.addEventListener('DOMContentLoaded', () => {
             const botonImportar = document.getElementById('botonImportarCapa');
             const botonGuardar = document.getElementById('botonGuardarCapa');
+            const menuCapas = document.getElementById('menuCapas');
+            const dividerCapas = document.getElementById('dividerCapas');
+            const dividerLi = dividerCapas ? dividerCapas.parentNode : null;
+
+            function agregarCapaADropdown(nombreCapaLimpio){
+                if (!menuCapas) return;
+
+                const li = document.createElement('li');
+                li.innerHTML = `<a class='dropdown-item' href='#'>${nombreCapaLimpio}</a>`
+
+                if (dividerLi) {
+                    menuCapas.insertBefore(li, dividerLi)
+                } else {
+                    menuCapas.appendChild(li);
+                }
+            }
 
             if (botonImportar) {
                 botonImportar.addEventListener('click', async (e) => {
@@ -104,6 +129,12 @@
                     input.onchange = async (event) => {
                         const file = event.target.files[0];
                         if (!file) return;
+                        const capa = file.name
+
+                        let nombreLimpio = capa.replace(/\.[^/.]+$/, "")
+
+                        window.listaCapas.push(nombreLimpio);
+                        console.log('Capas importadas: ', window.listaCapas)
 
                         try {
                             const arrayBuffer = await file.arrayBuffer();
@@ -136,6 +167,9 @@
                                 }
                             }).addTo(window.map);
                             
+                            agregarCapaADropdown(nombreLimpio)
+                            localStorage.setItem('capas', JSON.stringify(window.listaCapas))
+
                             if (typeof window.guardarCapa === 'function'){
                                 window.guardarCapa();
                             }
@@ -165,6 +199,25 @@
             }
 
             //PARA EXPORTAR LA CAPA CREADA CON TODAS SUS FIGURAS
+
+            function cargarcapas(){
+                const capasGuardadasJSON = localStorage.getItem('capas');
+                if(!capasGuardadasJSON) return;
+
+                try {
+                    const listaCapasArray = JSON.parse(capasGuardadasJSON);
+                    window.listaCapas = listaCapasArray;
+
+                    listaCapasArray.forEach(nombreCapaLimpio => {
+                        agregarCapaADropdown(nombreCapaLimpio)
+                    })
+                    console.log('Capas cargadas desde localStorage')
+                } catch (error){
+                    console.error('Error cargando lista de capas', error)
+                }
+            }
+
+        cargarcapas();
         });
     </script>
 

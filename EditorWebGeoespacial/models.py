@@ -43,7 +43,7 @@ class Subclasificacion(models.Model):
     
     def __str__(self):
         return self.nombre
-    
+#Estoy pensando en eliminar Capa. Proyecto cumple la misma función
 class Capa(models.Model):
     nombre              = models.CharField(max_length=100)
     autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -67,7 +67,7 @@ class Figura(models.Model):
             raise ValidationError('El campo coordenadas debe tener un objeto GeoJSON válido.')
 
     def __str__(self):
-       return f'Coordenadas: {self.coordenadas}'
+       return f'Atributos: {self.atributos} Coordenadas: {self.coordenadas}'
     
 #_________________________________________//OTROS\\_________________________________
 
