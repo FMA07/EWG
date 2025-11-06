@@ -51,14 +51,6 @@
                             <li><a id="botonImportarCapa" class="dropdown-item" href="">Importar capa</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a id="dropdownCapas" class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Capas
-                        </a>
-                        <ul id="menuCapas" class="dropdown-menu">
-                            <li><hr class="dropdown-divider" id="dividerCapas"></li>
-                        </ul>
-                    </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -101,23 +93,39 @@
         document.addEventListener('DOMContentLoaded', () => {
             const botonImportar = document.getElementById('botonImportarCapa');
             const botonGuardar = document.getElementById('botonGuardarCapa');
-            const menuCapas = document.getElementById('menuCapas');
             const dividerCapas = document.getElementById('dividerCapas');
-            const dividerLi = dividerCapas ? dividerCapas.parentNode : null;
+            const listaCapasImportadas = document.getElementById('listaCapasImportadas')
+            const seccionLista = document.getElementById('seccionCapasImportadas')
+            const divisorSeccion = document.getElementById('sectionDivider')
 
-            function agregarCapaADropdown(nombreCapaLimpio){
-                if (!menuCapas) return;
+            //PARA AGREGAR LAS CAPAS IMPORTADAS A UNA LISTA
+            function agregarCapaALista(nombreLimpio){
+                if (!listaCapasImportadas) return;
 
-                const li = document.createElement('li');
-                li.innerHTML = `<a class='dropdown-item' href='#'>${nombreCapaLimpio}</a>`
+                const divider = document.createElement('hr')
+                const li = document.createElement('li')
+                const a = document.createElement('a')
 
-                if (dividerLi) {
-                    menuCapas.insertBefore(li, dividerLi)
-                } else {
-                    menuCapas.appendChild(li);
-                }
+                li.className = 'lista-capas-importadas'
+
+                a.href = '#';
+                a.style.textDecoration = 'none'
+                a.style.color = 'black'
+                a.textContent = nombreLimpio
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if(typeof window.alternarVisibilidadCapa === 'function') {
+                        window.alternarVisibilidadCapa(nombreLimpio, e.currentTarget)
+                    }
+                })
+                li.appendChild(a)
+                listaCapasImportadas.appendChild(li)
+                listaCapasImportadas.appendChild(divider)
+
+                seccionLista.style.display = 'block'
+                divisorSeccion.style.display = 'block'
             }
-
+            window.agregarCapaALista = agregarCapaALista
             if (botonImportar) {
                 botonImportar.addEventListener('click', async (e) => {
                     e.preventDefault();
@@ -141,6 +149,8 @@
 
                             // Convertir el shapefile a GeoJSON
                             const geojson = await shp(arrayBuffer);
+
+                            localStorage.setItem(`capa_data_${nombreLimpio}`, JSON.stringify(geojson))
                         
                             // Crear capa GeoJSON en Leaflet
                             L.geoJSON(geojson, {
@@ -154,25 +164,19 @@
                                     }
                                     
                                     layer.feature = feature;
+                                    layer.feature.properties = layer.feature.properties || {};
+                                    layer.feature.properties.__origenCapa = nombreLimpio;
                                     
                                     if (typeof window.mostrarDatosOffcanvas === 'function'){
                                         layer.on('click', function(e){
                                             window.mostrarDatosOffcanvas(e.target);
                                         })
                                     }
-
-                                    else if (window.editarDatosFigura) {
-                                        
-                                    }
                                 }
                             }).addTo(window.map);
                             
-                            agregarCapaADropdown(nombreLimpio)
+                            agregarCapaALista(nombreLimpio)
                             localStorage.setItem('capas', JSON.stringify(window.listaCapas))
-
-                            if (typeof window.guardarCapa === 'function'){
-                                window.guardarCapa();
-                            }
 
                             if (window.editableLayers && window.editableLayers.getLayers().length > 0) {
                                 window.map.fitBounds(window.editableLayers.getBounds());
@@ -208,8 +212,8 @@
                     const listaCapasArray = JSON.parse(capasGuardadasJSON);
                     window.listaCapas = listaCapasArray;
 
-                    listaCapasArray.forEach(nombreCapaLimpio => {
-                        agregarCapaADropdown(nombreCapaLimpio)
+                    listaCapasArray.forEach(nombreLimpio => {
+                        agregarCapaALista(nombreLimpio)
                     })
                     console.log('Capas cargadas desde localStorage')
                 } catch (error){

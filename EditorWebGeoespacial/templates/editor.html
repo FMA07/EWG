@@ -51,9 +51,16 @@
                     </li>
                     {% endfor %}
                 </ul>
+                <hr id="sectionDivider" class="sidebar-section-divider" style="display: none;">
+                <ul id="seccionCapasImportadas" style="list-style-type: none; margin-left: -20px; display: none;">
+                    <li style="font-weight: bold; margin-left: -20px; margin-bottom: -5px;">
+                        Capas Importadas
+                    </li>
+                    <hr>
+                    <li id="listaCapasImportadas" class="lista-capas-importadas activa"></li>
+                </ul>
             </div>
         </div>
-        <!--Sección simbología-->
     </div>
     <div class="modal fade" id="modalEstaticoCategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
         <div class="modal-dialog">
@@ -236,8 +243,14 @@
 
 <!--LISTENER--------->
 <script>
-
+    window.capasVisibles = window.capasVisibles || {};
+    window.capaActualmenteEditada = null;
     let capaEnVista = null;
+    window.camposOcultos = [
+        '__subclasificacionId',
+        '__subclasificacionNombre',
+        '__origenCapa',
+    ]
 
     //FUNCIONES DE LA LISTA DE CATEGORIAS
     
@@ -268,7 +281,7 @@
                         fetchContenidoCategoria(categoriaId, listaCategorias);
                     } else {
                         listaSubcategoriasUl.style.display = 'none';
-                        document.getElementById('figuras-container').innerHTML = '';
+                        
                     }
                 }
             })
@@ -434,45 +447,130 @@
             }
         });
         //-----------------------------------------------//LOCALSTORAGE\\------------------------------------------
-        //------------------------SCRIPT PARA CARGAR LAS FIGURAS DEL LOCALSTORAGE-----------------
+        //------------------------SCRIPT PARA CARGAR LAS FIGURAS PROPIAS DEL LOCALSTORAGE-----------------
         
         window.editableLayers = L.featureGroup().addTo(map);
 
-        function cargarFiguras(){
-            const figurasGuardadas = localStorage.getItem('todasLasFiguras');
-            if(!figurasGuardadas) return;
+        //PARA CARGAR LAS FIGURAS SEGÚN SU SUBCLASIFICACION
+        function cargarFigurasPorSubclasificacion(){
+            for (let key in localStorage){
+                if (key.startsWith("figuras_subclas_")){
+                    try {
+                        const geojson = JSON.parse(localStorage[key]);
 
-            try{
-                const geojson = JSON.parse(figurasGuardadas);
-                L.geoJSON(geojson, {
-                    onEachFeature: function(feature, layer){
-                        layer.feature = feature;
-                        layer.feature.properties = feature.properties || {};
-                        
-                        attachEditListeners(layer);
-                        editableLayers.addLayer(layer);
+                        L.geoJSON(geojson, {
+                            onEachFeature: (feature, layer) => {
+                                layer.feature = feature;
+                                attachEditListeners(layer);
+                                editableLayers.addLayer(layer);
+                            }
+                        }).addTo(map);
+
+                        console.log(`Cargada ${key}`);
+                    } catch (err){
+                        console.error("Error cargando subclas:", key, err);
                     }
-                }).addTo(map);
+                }
+            }
+        }
 
-                console.log("Figuras restauradas correctamente con atributos: ", geojson.features.length);
-            } catch(error){
-                console.error("Error cargando las figuras desde localStorage: ", error)
+        //FUNCION PARA CARGAR LAS FIGURAS IMPORTADAS
+        function cargarCapasImportadas(){
+            if (!window.listaCapas || window.listaCapas.length === 0) {
+                return
+            }
+
+            window.listaCapas.forEach(nombreCapa => {
+                const capaDataJSON = localStorage.getItem(`capa_data_${nombreCapa}`);
+                if (!capaDataJSON) return;
+
+                try {
+                    const geojson = JSON.parse(capaDataJSON);
+                    L.geoJSON(geojson, {
+                        onEachFeature: function(feature, layer){
+                            layer.feature = feature;
+                            layer.feature.properties = feature.properties || {};
+                            layer.feature.properties.__origenCapa = nombreCapa;
+
+                            attachEditListeners(layer);
+                            window.editableLayers.addLayer(layer);
+                        }
+                    })
+                    .addTo(map);
+                    console.log(`Capa importada '${nombreCapa}' restaurada correctamente.`)
+                } catch(error) {
+                    console.error(`Error cargando capa importada ${nombreCapa}: `, error)
+                }
+            })
+        }
+        
+        //FUNCION PARA GUARDAR LOS CAMBIOS EN DISTINTAS CAPAS
+
+        function guardarCambiosCapa(layer){
+            if (!layer || !layer.feature){
+                console.error('Error al guardar cambios: La capa o sus propiedades (feature) no son válidas.', layer);
+                return;
+            }
+            const origen = layer.feature?.properties?.__origenCapa;
+            const subId = layer.feature?.properties?.__subclasificacionId;
+
+            if (origen) {
+                const figurasAGuardar = window.editableLayers.getLayers().filter(l => l.feature?.properties?.__origenCapa === origen);
+
+                if (figurasAGuardar.length > 0) {
+                    const geojsonCapa = {
+                        type: 'FeatureCollection',
+                        features: figurasAGuardar.map(l => l.toGeoJSON())
+                    };
+                    localStorage.setItem(`capa_data_${origen}`, JSON.stringify(geojsonCapa));
+                    console.log(`Capa importada '${origen}' guardada por separado en localStorage.`)
+                }
+            } 
+            else if (subId) {
+                guardarFiguraPorSubclasificacion(layer)
+                console.log(`Figura editada o movida actualizada en subclasificación ${subId}`)
+            }
+        }
+
+        function guardarTrasRemover(removedLayer){
+            if(!removedLayer || !removedLayer.feature){
+                return;
+            }
+
+            const origen = removedLayer.feature.properties.__origenCapa;
+
+            if(origen) {
+                const figurasAGuardar = window.editableLayers.getLayers().filter(l => l.feature && l.feature.properties && l.feature.properties.__origenCapa === origen)
+
+                if(figurasAGuardar.length >0) {
+                    const geojsonCapa = {
+                        type: 'FeatureCollection',
+                        features: figurasAGuardar.map(l => l.toGeoJSON())
+                    };
+
+                    localStorage.setItem(`capa_data_${origen}`, JSON.stringify(geojsonCapa));
+                    console.log(`Capa importada '${origen}' actualizada y guardada tras eliminación.`)
+                } else {
+                    localStorage.removeItem(`capa_data_${origen}`)
+                    console.log(`Capa importada '${origen}' vacía. Eliminada de localStorage.`);
+                    window.listaCapas = window.listaCapas.filter(nombre => nombre !== origen);
+                    localStorage.setItem('capas', JSON.stringify(window.listaCapas));
+
+                    if(typeof window.agregarCapaALista === 'function') {
+                        window.agregarCapaALista();
+                    }
+                }
+            } 
+            else if (removedLayer.feature.properties.__subclasificacionId) {
+                guardarFiguraPorSubclasificacion(removedLayer);
+                console.log(`Figura eliminada en subclasificación ${removedLayer.feature.properties.__subclasificacionId}`)
             }
         }
         
-        //FUNCION PARA GUARDAR LAS FIGURAS EN EL LOCALSTORAGE
-        function guardarCapa(){
-            var geojson = window.editableLayers.toGeoJSON();
-            localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
-            console.log("Capa guardada en localStorage");
-        }
-
-        window.guardarCapa = guardarCapa
-        
         //LISTENERS PARA EDITAR, MOVER Y ELIMINAR UNA FIGURA
         function attachEditListeners(layer){
-            layer.on("pm:edit", guardarCapa);
-            layer.on("pm:dragend", guardarCapa);
+            layer.on("pm:edit", (e) => guardarCambiosCapa(e.target));
+            layer.on("pm:dragend", (e) => guardarCambiosCapa(e.target));
             
 
             layer.on('click', function(e){
@@ -486,17 +584,14 @@
 
                 setTimeout(() => {
                     try{
-                        if (removedLayer && window.editableLayers) {
+                        if (removedLayer && window.editableLayers && window.editableLayers.hasLayer(removedLayer)){
                             window.editableLayers.removeLayer(removedLayer);
-                            console.log('Layer removido de editableLayers: ', removedLayer);
+                            console.log('Layer forzado a ser removido de editableLayers antes de guardar.');
                         }
 
-                        if ( window.editableLayers) {
-                            const geojson = window.editableLayers.toGeoJSON();
-                            localStorage.setItem("todasLasFiguras", JSON.stringify(geojson));
-                            console.log('LocalStorage actualizado. Features: ', geojson.features ? geojson.features.length : 0);
-                        } 
-                        
+                        if (removedLayer) {
+                            guardarTrasRemover(removedLayer);
+                        }
                         if (removedLayer?.feature?.properties?.id) {
                             const figuraId = removedLayer.feature.properties.id;
 
@@ -506,15 +601,30 @@
                                     'X-CSRFToken': getCookie('csrftoken'),
                                 },
                             })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.success) {
-                                    console.log(`Figura ${figuraId} eliminada correctamente del backend`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP status: ${response.status}`)
+                                }
+                                return response.text();
+                            })
+                            .then(text => {
+                                if (text) {
+                                    try {
+                                        const data = JSON.parse(text);
+                                        console.log("Figura eliminada del backend. Respuesta: ", data)
+                                    } catch (e) {
+                                        console.error("Respuesta del servidor no es JSON válida: ", text, e)
+                                    }
                                 } else {
-                                    console.error(`Error al eliminar la figura ${figuraId}: `, data.error)
+                                    console.log("Figura eliminada del backend. Respuesta vacía.");
+                                }
+                                if (!removedLayer.feature.properties.__origenCapa) {
+                                    window.guardarFiguraPorSubclasificacion();
                                 }
                             })
-                            .catch(err => console.error('Error al eliminar la figura en el backend: ', err))
+                            .catch(error => {
+                                console.error("Error al eliminar la figura en el backend:", error)
+                            })
                         }
                         else {
                             console.warn('No se encontró un ID de figura en las propiedades del layer.');
@@ -527,7 +637,8 @@
         window.attachEditListeners = attachEditListeners;
 
         
-        cargarFiguras(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
+        cargarFigurasPorSubclasificacion(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
+        cargarCapasImportadas();
 
         //---------------------------------------------------------------------------------------------------------------------
 
@@ -738,7 +849,7 @@
                 e.preventDefault();
                 const formData = new FormData(form);
                 const atributos = Object.fromEntries(formData.entries());
-                guardarFigura(atributos);
+                guardarFiguraPorSubclasificacion(atributos);
                 modal.hide();
             }
         }
@@ -801,6 +912,9 @@
                     //Estas dos líneas permiten actualizar la capa para que la figura muestre los atributos asignados
                     layer.feature = layer.feature || {type: 'Feature', properties: {}};
                     layer.feature.properties = Object.assign({}, layer.feature.properties, datos);
+                    layer.feature.properties.__subclasificacionId = window.subclasSeleccionada.id;
+                    layer.feature.properties.__subclasificacionNombre = window.subclasSeleccionada.nombre;
+
 
                     fetch('/guardar_figura/', {
                         method: 'POST',
@@ -817,7 +931,7 @@
                             if (data.id){
                                 layer.feature.properties.id = data.id;
                             }
-                            guardarCapa();
+                            guardarFiguraPorSubclasificacion(layer);
                             alert('Figura guardada correctamente');
                             const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
                             offcanvas?.hide(); 
@@ -843,23 +957,39 @@
             }
         }
 
-        function guardarFigura(atributos){
-            const figura = {
-                subclasificacion_id: window.subclasSeleccionada.id,
-                subclasificacion_nombre: window.subclasSeleccionada.nombre,
-                coordenadas: window.geometriaActual,
-                atributos: atributos,
+        function guardarFiguraPorSubclasificacion(layer) {
+            if (!layer || !layer.feature || !layer.feature.properties) {
+                console.error("Figura inválida al guardar por subclasificación");
+                return;
             }
 
-            const guardadas = JSON.parse(localStorage.getItem('figuras_guardadas') || '[]');
-            guardadas.push(figura)
-            localStorage.setItem('figuras_guardadas', JSON.stringify(guardadas))
+            const subId = layer.feature.properties.__subclasificacionId;
 
-            console.log('Figura guardada correctamente: ', figura);
+            if(!subId){
+                console.warn("La figura no tiene subclasificación asignada.");
+                return;
+            }
+
+            //Se filtra a todas las figuras que pertenecen a esta subclas
+            const figuras = window.editableLayers.getLayers().filter(l => {
+                return l.feature && l.feature.properties && l.feature.properties.__subclasificacionId == subId;
+            })
+
+            const geojson = {
+                type: "FeatureCollection",
+                features: figuras.map(l => l.toGeoJSON())
+            }
+
+            localStorage.setItem(`figuras_subclas_${subId}`, JSON.stringify(geojson))
+
+            console.log(`Guardada subclasificación ${subId} en localStorage`)
         }
+
+        
 
         //Funcion que permite ver la tabla de datos en offcanvas al hacer click en una figura de una capa cargada
         function mostrarDatosOffcanvas(layer){
+            if (!layer ||!layer.feature) return;
             const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
             const offcanvasBody = document.getElementById('cuerpoTablas');
             const offcanvasElement = document.getElementById('seccionTablas')
@@ -876,7 +1006,7 @@
                 tablaHtml += `<tr><td colspan="2">No hay atributos definidos para esta figura.</td></tr>`;
             } else {
                 for (const key of propKeys){
-                    const safeValue = (properties[key] === null || properties[key] === undefined) ? '' : properties[key];
+                    if (camposOcultos.includes(key)) continue;
                     tablaHtml += `<tr><td><strong>${key}</strong></td><td>${properties[key]}</td></tr>`;
                 }
             }
@@ -904,6 +1034,7 @@
         })
 
         function generarFormularioEditable(layer){
+            window.capaActualmenteEditada = layer;
             const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
             const offcanvasBody = document.getElementById('cuerpoTablas');
 
@@ -920,6 +1051,7 @@
                 formHtml = `<tr><td><strong>Nuevo Atributo</strong></td><td><input type="text" class="form-control form-control-sm" name="nuevo_atributo_1" value=""></td></tr>`;
             } else {
                 for (const key of propKeys) {
+                    if (camposOcultos.includes(key)) continue;
                     const safeValue = (properties[key] === null || properties[key] === undefined) ? '' : properties[key];
                     formHtml += `<tr><td><strong>${key}</strong></td><td><input type="text" class="form-control form-control-sm" name="${key}" value="${safeValue}"></td></tr>`;
                 }
@@ -940,26 +1072,37 @@
         function guardarAtributosEditados(layer, formElement){
             const formData = new FormData(formElement);
             const newProperties = {};
+            const oldProps = layer.feature.properties
 
             for (const [key, value] of formData.entries()) {
-                if (key) {
+                if (!window.camposOcultos.includes(key)) {
                     newProperties[key] = value;
                 }
             }
 
+            for (const key in oldProps) {
+                if (window.camposOcultos.includes(key)) {
+                    newProperties[key] = oldProps[key]
+                }
+            }
             
             if (!layer.feature) {
                 layer.feature = {type: 'Feature', properties: {}};
             }
             layer.feature.properties = newProperties;
 
-            
-            if (layer) {
-                window.guardarCapa();
-                alert('Atributos guardados');
+            if(oldProps.__subclasificacionId) {
+                guardarFiguraPorSubclasificacion(layer)
+            } 
+            else if (oldProps.__origenCapa){
+                guardarCambiosCapa(layer);
             }
 
+            else {
+                guardarFiguraPorSubclasificacion();
+            }
             
+            alert('Atributos guardados')
             mostrarDatosOffcanvas(layer);
         }
 
@@ -1021,6 +1164,9 @@
                 map.pm.disableDraw();
                 const layer = e.layer;
                 editableLayers.addLayer(layer);
+                layer.feature = layer.feature || { type: "Feature", properties: {} };
+                layer.feature.properties.__subclasificacionId = window.subclasSeleccionada.id;
+                layer.feature.properties.__subclasificacionNombre = window.subclasSeleccionada.nombre;
 
                 try {
                     const geojson = layer.toGeoJSON().geometry;
@@ -1037,21 +1183,48 @@
                 }
 
                 attachEditListeners(layer);
-                guardarCapa();
-
-                if (window.subclasSeleccionada) {
-                    asignarDatosFigura(layer);
-                } else {
-                    alert("Selecciona una subclasificación antes de dibujar");
-                    layer.remove();
-                }
+                guardarFiguraPorSubclasificacion(layer);
+                asignarDatosFigura(layer);
             });
 
         } catch (err) {
             console.error("Error activando las herramientas de dibujo", err);
         }
     }
+    
+    window.alternarVisibilidadCapa = function(nombreCapa, elementoLista) {
+        const esVisible = window.capasVisibles[nombreCapa] !== false;
 
-    });
+        window.editableLayers.eachLayer(function(layer) {
+            const origen = layer.feature && layer.feature.properties && layer.feature.properties.__origenCapa;
+
+            if (origen === nombreCapa) {
+                if (esVisible) {
+                    window.map.removeLayer(layer);
+                } else {
+                    layer.addTo(window.map);
+                }
+            }
+        })
+
+        window.capasVisibles[nombreCapa] = !esVisible
+
+        if (elementoLista) {
+            if (!esVisible) {
+                elementoLista.style.opacity = '1.0';
+            } else {
+                elementoLista.style.opacity = '0.5'; 
+            }
+        }
+        console.log(`Visibilidad de capa ${nombreCapa} alternada a ${!esVisible ? 'VISIBLE' : 'OCULTA'}.`)
+    }
+
+    function eliminarCapa(){
+        if (!window.listaCapas || window.listaCapas.length === 0) {
+                return
+            }
+    }
+
+});
 </script>
 {% endblock %}

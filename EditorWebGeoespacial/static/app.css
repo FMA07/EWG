@@ -90,6 +90,10 @@ body, html{
     z-index: 2000;
 }
 
+.lista-capas-importadas{
+    text-align: left;
+}
+
 #map{
     height: calc(100vh - 52px);
     width: 100%;
@@ -247,6 +251,11 @@ body, html{
 .sidebar-divider{
     color: #212529;
     margin-left: 40px;
+}
+
+.sidebar-section-divider{
+    color: #212529;
+    border-width: 2px;
 }
 
 #sidebar-header{
