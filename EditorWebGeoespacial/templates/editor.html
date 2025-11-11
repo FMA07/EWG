@@ -24,7 +24,7 @@
                     {% for categoria in categorias %}
                     <li class="lista-categorias">
                         <div class="contenedor-categorias">
-                            <input class="form-check-input" type="checkbox"></input>
+                            <input class="form-check-input categoria-checkbox" type="checkbox" data-id="{{ categoria.id }}" data-tipo="categoria" checked></input>
                             <button class="sidebar-options boton-categorias-toggle" data-id="{{ categoria.id }}">
                                 {{categoria.nombre}}
                             </button>
@@ -313,8 +313,11 @@
                             itemContainer.className = 'contenedor-subcategorias';
 
                             const checkbox = document.createElement('input');
-                            checkbox.className = 'form-check-input subitem-checkbox'
-                            checkbox.setAttribute('type', 'checkbox');
+                            checkbox.type = 'checkbox';
+                            checkbox.checked = true;
+                            checkbox.className = 'form-check-input subitem-checkbox';
+                            checkbox.dataset.id = sub.id;
+                            checkbox.dataset.tipo = 'subcategoria';
 
                             const btn = document.createElement('button');
                             btn.className = 'sidebar-suboption';
@@ -384,7 +387,10 @@
 
                     const checkbox = document.createElement('input');
                     checkbox.className = 'form-check-input subitem-checkbox';
-                    checkbox.setAttribute('type', 'checkbox');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.id = subclas.id;
+                    checkbox.dataset.tipo = 'subclasificacion'
 
                     const subclasBtn = document.createElement('button');
                     subclasBtn.className = 'sidebar-suboption'
@@ -619,7 +625,7 @@
                                     console.log("Figura eliminada del backend. Respuesta vacía.");
                                 }
                                 if (!removedLayer.feature.properties.__origenCapa) {
-                                    window.guardarFiguraPorSubclasificacion();
+                                    guardarFiguraPorSubclasificacion();
                                 }
                             })
                             .catch(error => {
@@ -658,6 +664,85 @@
             return cookieValue;
         }
 
+        //Para exportar ls capas
+
+        //Para exportar ls capas
+
+        const botonExportar = document.getElementById('botonExportarCapa');
+
+        if(botonExportar) {
+            botonExportar.addEventListener('click', (e) => {
+                e.preventDefault()
+
+                const geojson = window.editableLayers.toGeoJSON()
+
+                if (!geojson || geojson.features.length === 0) {
+                    alert('No hay figuras para exportar')
+                    return
+                }
+
+                const nombreSugerido = 'capa_completa_' + new Date().toISOString().slice(0, 10);
+                const nombreArchivo = prompt("Ingresa el nombre del archivo (sin extensión .zip):", nombreSugerido);
+
+                if (!nombreArchivo) {
+                    alert('Exportación cancelada')
+                    return;
+                }
+
+                const tiposGeometria = new Set();
+
+                geojson.features.forEach(feature => {
+                    if (feature.geometry && feature.geometry.type) {
+                        tiposGeometria.add(feature.geometry.type)
+                    }
+                })
+
+                if (tiposGeometria.size > 1) {
+                    alert('Error de exportación, la capa contiene más de un tipo de geometría ('+ Array.from(tiposGeometria).join(', ')+'). El formato Shapefile solo soporta un tipo de geometría por archivo')
+                    return;
+                }
+
+                const capaAExportar = geojson
+
+                fetch('/exportar_SHP/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        geojson: capaAExportar,
+                        filename: nombreArchivo
+                    })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob()
+                    } else {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || 'Error desconocido en la exportación')
+                        })
+                    }
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a')
+                    a.style.display = 'none'
+                    a.href = url
+                    a.download = `${nombreArchivo}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url)
+                    alert(`Exportación completada. Descargando ${nombreArchivo}.zip`)
+                })
+                .catch(error => {
+                    console.error('Error durante la exportación: ', error);
+                    alert(`Fallo en la exportación: ${error.message}`)
+                })
+            })
+        }
+        
+
         //--------------------------------------//FORMULARIOS\\----------------------------------------------------------------
         const csrftoken = getCookie('csrftoken');
 
@@ -691,7 +776,10 @@
 
                     const checkbox = document.createElement('input');
                     checkbox.className = 'form-check-input subitem-checkbox';
-                    checkbox.setAttribute('type', 'checkbox');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.id = 'data.id'
+                    checkbox.dataset.tipo = 'categoria'
                     
                     const nuevaCategoria = document.createElement('button');
                     nuevaCategoria.className = 'sidebar-options';
@@ -1146,7 +1234,7 @@
                     barraHerramientas.drawMarker = true;
                     break;
                 case 'LineString':
-                    barraHerramientas.drawLine = true;
+                    barraHerramientas.drawPolyline = true;
                     break;
                 case 'Polygon':
                     barraHerramientas.drawPolygon = true;
@@ -1160,7 +1248,7 @@
             map.pm.addControls(barraHerramientas);
 
             // CREAR UNA NUEVA FIGURA
-            map.once("pm:create", async (e) => {
+            map.on("pm:create", async (e) => {
                 map.pm.disableDraw();
                 const layer = e.layer;
                 editableLayers.addLayer(layer);
@@ -1224,6 +1312,76 @@
                 return
             }
     }
+
+    document.addEventListener('change', function(e) {
+        const checkbox = e.target;
+        if(!checkbox.classList.contains('form-check-input')) return;
+
+        const tipo = checkbox.dataset.tipo;
+        const id = checkbox.dataset.id;
+        const visible = checkbox.checked;
+
+        if (!tipo || !id) return;
+
+        function alternarVisibilidadPorJerarquia(tipo, id, visible){
+            if (tipo === 'categoria') {
+                fetch(`/obtener_contenido_categoria/${id}/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.subcategorias) {
+                            data.subcategorias.forEach(sub => {
+                                alternarVisibilidadPorJerarquia('subcategoria', sub.id, visible)
+                            })
+                        }
+
+                        if (data.subclasificaciones_cat) {
+                            data.subclasificaciones_cat.forEach(subclas => {
+                                alternarVisibilidadPorJerarquia('subclasificacion', subclas.id, visible)
+                            })
+                        }
+                    })
+                    .catch(err => console.error('Error fetch de categoria: ', err))
+                return;
+            }
+
+            else if ( tipo === 'subcategoria') {
+                fetch(`/obtener_contenido_subcategoria/${id}/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.items) {
+                            data.items.forEach(subclas => {
+                                alternarVisibilidadPorJerarquia('subclasificacion', subclas.id, visible);
+                            })
+                        }
+                    })
+                    .catch(err => console.error("Error fetch subcategoria: ", err))
+            }
+
+            else if (tipo === 'subclasificacion') {
+                const key = `figuras_subclas_${id}`
+                const geojsonData = localStorage.getItem(key);
+                if (!geojsonData) return;
+
+                const figuras = JSON.parse(geojsonData);
+
+                window.editableLayers.eachLayer(function(layer) {
+                    if (layer.feature?.properties?.__subclasificacionId == id) {
+                        if (visible) {
+                            if (!map.hasLayer(layer)) layer.addTo(map);
+                        } else {
+                            if (map.hasLayer(layer)) map.removeLayer(layer);
+                        }
+                    }
+                })
+
+                return;
+            }
+        }
+
+        alternarVisibilidadPorJerarquia(tipo, id, visible)
+    })
+
+
 
 });
 </script>

@@ -37,20 +37,44 @@
                         </li>
                     {% endif %}     
                 </ul> 
-                <ul class="navbar-nav ms-auto">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="">{{ user.username }}</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Cerrar sesión</a>
-                        </li>
-                    {% endif %}
-                </ul>  
             </div>
         </div>
     </nav>
     <div class="contenedor-mapa">
+        <div id="sidebar" class="sidebar" style="margin-top: 52px;">
+        <button id="toggleSidebar" class="btn btn-sm btn-light">
+            &lt;
+        </button>
+        <div id="sidebar-content" style="margin-top: 0px;"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC  TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
+            <div id="sidebar-body">
+                <ul style="list-style-type: none; margin-left: -20px;">
+                    {% for categoria in categorias %}
+                    <li class="lista-categorias">
+                        <div class="contenedor-categorias">
+                            <input class="form-check-input categoria-checkbox" type="checkbox" data-id="{{ categoria.id }}" data-tipo="categoria" checked></input>
+                            <button class="sidebar-options boton-categorias-toggle" data-id="{{ categoria.id }}">
+                                {{categoria.nombre}}
+                            </button>
+                        </div>
+    
+                        <ul class="lista-subcategorias" style="display: none; list-style-type: none; margin-left: -20px;">
+                            <li class="subcat-list-items" id="subcats-{{ categoria.id }}"></li>
+                            <li class="subclas-list-items" id="subclas-cat-{{ categoria.id }}"></li>
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <hr id="sectionDivider" class="sidebar-section-divider" style="display: none;">
+                <ul id="seccionCapasImportadas" style="list-style-type: none; margin-left: -20px; display: none;">
+                    <li style="font-weight: bold; margin-left: -20px; margin-bottom: -5px;">
+                        Capas Importadas
+                    </li>
+                    <hr>
+                    <li id="listaCapasImportadas" class="lista-capas-importadas activa"></li>
+                </ul>
+            </div>
+        </div>
+    </div>
         <div id="map"></div>
     </div>
 </body>
@@ -134,5 +158,182 @@
         cambiarMapa(relieve);
     });
 
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
+
+        botonCategorias.forEach(function(boton){
+            boton.addEventListener("click", function(e){
+                e.preventDefault();
+
+                var listaCategorias = this.closest('.lista-categorias');
+                var listaSubcategoriasUl = listaCategorias ? listaCategorias.querySelector('.lista-subcategorias') : null;
+                const categoriaId = this.dataset.id;
+
+                if (listaSubcategoriasUl) {
+
+                    const seAbre = listaSubcategoriasUl.style.display === 'none' || !listaSubcategoriasUl.style.display;
+
+                    if (seAbre) {
+                        document.querySelectorAll('.lista-subcategorias').forEach(ul => {
+                            if (ul !== listaSubcategoriasUl) {
+                                ul.style.display = 'none';
+                            }
+                        });
+                        
+                        listaSubcategoriasUl.style.display = 'block';
+                        fetchContenidoCategoria(categoriaId, listaCategorias);
+                    } else {
+                        listaSubcategoriasUl.style.display = 'none';
+                        
+                    }
+                }
+            })
+        });
+
+        // CODIGO PARA CARGAR EL CONTENIDO DE LAS CATEGORIAS Y SUBCATEGORIAS
+        function fetchContenidoCategoria(categoriaId, listaCategorias) {
+            const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
+            const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
+
+            subcatListContainer.innerHTML = '<li>Cargando...</li>';
+            subclasListContainer.innerHTML = '';
+
+            fetch(`/obtener_contenido_categoria/${categoriaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    subcatListContainer.innerHTML = '';
+
+                    if (!data) {
+                        subcatListContainer.innerHTML = `<li>Error cargando contenido: ${data.error}`;
+                        return
+                    }
+
+                    if (data.subcategorias) {
+                        data.subcategorias.forEach(sub => {
+                            const li = document.createElement('li');
+                            const itemContainer = document.createElement('div');
+                            itemContainer.className = 'contenedor-subcategorias';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.checked = true;
+                            checkbox.className = 'form-check-input subitem-checkbox';
+                            checkbox.dataset.id = sub.id;
+                            checkbox.dataset.tipo = 'subcategoria';
+
+                            const btn = document.createElement('button');
+                            btn.className = 'sidebar-suboption';
+                            btn.dataset.id = sub.id;
+                            btn.textContent = sub.nombre;
+
+                            btn.addEventListener('click', function(event){
+                                event.stopPropagation();
+                                fetchContenidoSubcategoria(sub.id, this); 
+                            });
+
+                            itemContainer.appendChild(checkbox);
+                            itemContainer.appendChild(btn)
+
+                            li.appendChild(itemContainer);
+                            subcatListContainer.appendChild(li);
+                        });
+                    }
+
+                    if (data.subclasificaciones_cat) {
+                        mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error cargando categoría: ', err);
+                    subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
+                });
+        }
+
+        //Funciones auxiliares para el fetch de subcategorias
+        function fetchContenidoSubcategoria(subId, clickedButton){
+            const subcatLi = clickedButton.closest('li');
+            const subclasId = `subclas-for-sub-${subId}`;
+            const elementoSubclas = document.getElementById(subclasId);
+
+            if (elementoSubclas) {
+                elementoSubclas.remove()
+                return; 
+            }
+
+            const subclasLi = document.createElement('li');
+            subclasLi.id = `subclas-for-sub-${subId}`;
+            subclasLi.className = 'subclas-injected-li'
+            subclasLi.innerHTML ='<p style="text-align: center;">Cargando figuras...</p>';
+
+            subcatLi.after(subclasLi);
+
+            fetch(`/obtener_contenido_subcategoria/${subId}/`)
+                .then(response => response.json())
+                .then(data =>{
+                    mostrarSubclasificacion(data.items, subclasLi, subId);
+                })
+                .catch(err => {
+                    console.error('Error cargando las subclasificaciones: ', err),
+                    subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
+                })
+        }
+
+        function mostrarSubclasificacion(items, container, subId){
+            container.innerHTML = '';
+            
+            if (items) {
+
+                items.forEach(subclas => {
+                    const itemContainer = document.createElement('div');
+                    itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
+
+                    const checkbox = document.createElement('input');
+                    checkbox.className = 'form-check-input subitem-checkbox';
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.id = subclas.id;
+                    checkbox.dataset.tipo = 'subclasificacion'
+
+                    const subclasBtn = document.createElement('button');
+                    subclasBtn.className = 'sidebar-suboption'
+                    subclasBtn.textContent = subclas.nombre;
+
+                    subclasBtn.dataset.id = subclas.id;
+
+                    itemContainer.appendChild(checkbox);
+                    itemContainer.appendChild(subclasBtn);
+
+                    container.appendChild(itemContainer);
+
+                    subclasBtn.addEventListener('click', function(event){
+                        event.stopPropagation();
+                        const subclasId = this.dataset.id;
+                        activarMododibujo(subclasId);
+                    })
+                })
+            }
+        }
+
+        //----------SCRIPT PARA LA SIDEBAR------------------
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleSidebar");
+
+        toggleBtn.addEventListener("click", function () {
+            sidebar.classList.toggle("minimized");
+            setTimeout(() => {
+                map.invalidateSize(); // Ajusta Leaflet después del cambio
+            }, 310);
+
+            if (sidebar.classList.contains("minimized")){
+                toggleBtn.innerHTML = "&gt;"
+            } else {
+                toggleBtn.innerHTML = "&lt;"
+            }
+        });
+        
+        
+    })
 </script>
 </html>

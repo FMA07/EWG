@@ -44,7 +44,7 @@
                         <ul class="dropdown-menu">
                             <li><a id="botonCrearProyecto" class="dropdown-item" href="{% url 'proyectos' %}">Proyectos</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a id="botonGuardarCapa" class="dropdown-item" href="">Guardar capa</a></li>
+                            <li><a id="btnCRUDCategorias" class="dropdown-item" href="{% url 'listaCategorias' %}">Categorías</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a id="botonExportarCapa" class="dropdown-item" href="">Exportar capa</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -93,7 +93,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             const botonImportar = document.getElementById('botonImportarCapa');
             const botonGuardar = document.getElementById('botonGuardarCapa');
-            const dividerCapas = document.getElementById('dividerCapas');
             const listaCapasImportadas = document.getElementById('listaCapasImportadas')
             const seccionLista = document.getElementById('seccionCapasImportadas')
             const divisorSeccion = document.getElementById('sectionDivider')
@@ -126,6 +125,7 @@
                 divisorSeccion.style.display = 'block'
             }
             window.agregarCapaALista = agregarCapaALista
+            //Función para importar las shapefiles
             if (botonImportar) {
                 botonImportar.addEventListener('click', async (e) => {
                     e.preventDefault();
@@ -192,16 +192,6 @@
                     input.click();
                 });
             }
-
-            //PARA GUARDAR LA CAPA ENTERA
-            if (botonGuardar) {
-                botonGuardar.addEventListener('click', async(e) =>{
-                    e.preventDefault();
-
-                    const figurasCreadas = localStorage.getItem('todasLasFiguras')
-                })
-            }
-
             //PARA EXPORTAR LA CAPA CREADA CON TODAS SUS FIGURAS
 
             function cargarcapas(){

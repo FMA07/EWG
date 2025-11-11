@@ -9,6 +9,7 @@ urlpatterns = [
     path('registro', views.pagregistro, name='registro'),
     path('login', auth_views.LoginView.as_view(template_name="login.html"), name='login'),
     path('logout', auth_views.LogoutView.as_view(next_page='mapa'), name='logout'),
+    path('listaCategorias', views.listaCategorias, name='listaCategorias'),
     path('guardar_por_ajax', views.guardar_por_ajax, name='guardar_por_ajax'),
     path('obtener_contenido_categoria/<int:categoria_id>/', views.obtener_contenido_categoria, name='obtener_contenido_categoria'),
     path('obtener_contenido_subcategoria/<int:subcategoria_id>/', views.obtener_contenido_subcategoria, name='obtener_contenido_subcategoria'),
@@ -16,4 +17,5 @@ urlpatterns = [
     path('eliminar_proyecto/<int:proyecto_id>/', views.eliminar_proyecto, name='eliminar_proyecto'),
     path('guardar_figura/', views.guardar_figura, name='guardar_figura'),
     path('eliminar_figura/<int:figura_id>/',views.eliminar_figura, name='eliminar_figura'),
+    path('exportar_SHP/', views.exportar_SHP, name='exportar_SHP'),
     ]

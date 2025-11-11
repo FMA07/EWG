@@ -1,12 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.gis.geos import GEOSGeometry
 from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion, FormularioProyecto
 from .models import Categoria, Subcategoria, Subclasificacion, Proyecto, Figura
 import json
+import io
+import os
+import zipfile
+import tempfile
+import geopandas as gpd
+from shapely.geometry import shape
+import pandas as pd
+import re
 
 # Create your views here.
 @login_required
@@ -60,6 +69,9 @@ def pagregistro(request):
         form = RegistroForm()
     return render(request, 'registro.html', {'form': form})
 
+@login_required
+def listaCategorias(request):
+    return render(request, 'categorias.html')
 
 #Vista para eliminar el localStorage al cerrar sesión
 def paglogout(request):
@@ -253,3 +265,69 @@ def eliminar_figura(request, figura_id):
         figura.delete()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+@csrf_exempt
+def exportar_SHP(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Solo se permiten peticiones POST'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        geojson_data = data.get('geojson')
+        file_name_base = data.get('filename', 'export_shp')
+        file_name_clean = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in file_name_base)
+        final_filename = f'{file_name_clean}.zip'
+        if not file_name_clean:
+            file_name_clean = 'capa_exportada'
+            
+        if not geojson_data or 'features' not in geojson_data:
+            return JsonResponse({'error': 'Datos geojson incompletos o inválidos'}, status = 400)
+     
+        geometries = []
+        properties = []
+
+        for feature in geojson_data['features']:
+            try:
+                geom = shape(feature['geometry'])
+                props = feature['properties']
+
+                geometries.append(geom)
+                properties.append(props)
+
+            except Exception as e:
+                print(f"Error procesando feature: {e}")
+                continue
+
+        if not geometries:
+            return JsonResponse({'error': 'No hay geometrías válidas para exportar'}, status = 400)
+        
+        geometryTypes = {geom.geom_type for geom in geometries}
+
+        if len(geometryTypes) >1:
+            error_msg = f'Error de exportación. Sólo se soporta un tipo de geometría por capa ({", ".join(geometryTypes)})'
+            return JsonResponse({'error': error_msg}, status = 400)
+
+        gdf = gpd.GeoDataFrame(properties, geometry = geometries, crs = "EPSG: 4326")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            shapefile_base_path = os.path.join(temp_dir, file_name_clean + '.shp')
+
+            gdf.to_file(shapefile_base_path, driver= 'ESRI Shapefile', encoding='utf-8')
+
+            zip_buffer = io.BytesIO()
+
+            file_paths = [os.path.join(temp_dir, f) for f in os.listdir(temp_dir) if f.startswith(file_name_clean)]
+
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for full_path in file_paths:
+                    zf.write(full_path, os.path.basename(full_path))
+
+            zip_buffer.seek(0)
+
+            response = HttpResponse(zip_buffer, content_type= 'application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{final_filename}"'
+            return response
+    
+    except Exception as e:
+        print(f"Error al exportar shapefile: {e}")
+        return JsonResponse({'error': f'Error interno del servidor: {str(e)}'}, status = 500)
