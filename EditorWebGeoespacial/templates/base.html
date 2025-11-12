@@ -104,6 +104,7 @@
                 const divider = document.createElement('hr')
                 const li = document.createElement('li')
                 const a = document.createElement('a')
+                const checkbox = document.createElement('input')
 
                 li.className = 'lista-capas-importadas'
 
@@ -125,7 +126,6 @@
                 divisorSeccion.style.display = 'block'
             }
             window.agregarCapaALista = agregarCapaALista
-            //Función para importar las shapefiles
             if (botonImportar) {
                 botonImportar.addEventListener('click', async (e) => {
                     e.preventDefault();
@@ -137,52 +137,98 @@
                     input.onchange = async (event) => {
                         const file = event.target.files[0];
                         if (!file) return;
+
                         const capa = file.name
-
                         let nombreLimpio = capa.replace(/\.[^/.]+$/, "")
-
-                        window.listaCapas.push(nombreLimpio);
-                        console.log('Capas importadas: ', window.listaCapas)
+                        const formData = new FormData();
+                        formData.append('file', file);
 
                         try {
-                            const arrayBuffer = await file.arrayBuffer();
+                            const response = await fetch('/importar_SHP/', {
+                                method: 'POST',
+                                body: formData
+                            })
 
-                            // Convertir el shapefile a GeoJSON
-                            const geojson = await shp(arrayBuffer);
+                            const data = await response.json();
 
+                            if (!data || data.success === false) {
+                                alert(data.error || 'Error al importar shapefile');
+                                return;
+                            }
+
+                            const geojson = data.geojson;
+                            const tipo = data.tipoGeometria || data.tipo_geometria || data.tipo;
+                            //Para guardar la capa en localStorage
                             localStorage.setItem(`capa_data_${nombreLimpio}`, JSON.stringify(geojson))
-                        
-                            // Crear capa GeoJSON en Leaflet
-                            L.geoJSON(geojson, {
-                                onEachFeature: (feature, layer) => {
-                                    if (window.editableLayers){
-                                        window.editableLayers.addLayer(layer);
-                                    }
+                            window.listaCapas = window.listaCapas || [];
+                            window.listaCapas.push(nombreLimpio);
+                            localStorage.setItem('capas', JSON.stringify(window.listaCapas))
 
-                                    if (typeof window.attachEditListeners === 'function'){
+                            if(typeof window.agregarCapaALista === 'function') {
+                                agregarCapaALista(nombreLimpio)
+                            }
+
+                            //Para agregar la capa al mapa
+                            const capaLeaflet = L.geoJSON(geojson, {
+                                onEachFeature: (feature, layer) => {
+                                    layer.feature = feature;
+                                    layer.feature.properties = layer.feature.properties || {}
+                                    layer.feature.properties.__origenCapa = nombreLimpio;
+
+                                    if (window.editableLayers) {
+                                        window.editableLayers.addLayer(layer)
+                                    }
+                                    if (typeof window.attachEditListeners === 'function') {
                                         window.attachEditListeners(layer)
                                     }
-                                    
-                                    layer.feature = feature;
-                                    layer.feature.properties = layer.feature.properties || {};
-                                    layer.feature.properties.__origenCapa = nombreLimpio;
-                                    
-                                    if (typeof window.mostrarDatosOffcanvas === 'function'){
+
+                                    if (typeof window.mostrarDatosOffcanvas === 'function') {
                                         layer.on('click', function(e){
-                                            window.mostrarDatosOffcanvas(e.target);
+                                            window.mostrarDatosOffcanvas(e.target)
                                         })
                                     }
                                 }
-                            }).addTo(window.map);
+                            }).addTo(map)
                             
-                            agregarCapaALista(nombreLimpio)
-                            localStorage.setItem('capas', JSON.stringify(window.listaCapas))
+                            if (window.map && capaLeaflet.getBounds().isValid()) {
+                                window.map.fitBounds(capaLeaflet.getBounds());
+                            }
+                            //Para activar la herramienta según el tipo de geometría
+                            if (window.map && window.map.pm) {
+                                window.map.pm.removeControls()
 
-                            if (window.editableLayers && window.editableLayers.getLayers().length > 0) {
-                                window.map.fitBounds(window.editableLayers.getBounds());
+                                const barraHerramientas = {
+                                    position: 'bottomleft',
+                                    drawMarker: false,
+                                    drawLine: false,
+                                    drawPolygon: false,
+                                    drawCircle: false,
+                                    drawCircleMarker: false,
+                                    drawRectangle: false,
+                                    rotateMode: false,
+                                    editMode: true,
+                                    dragMode: true,
+                                    removalMode: true,
+                                    cutPolygon: false,
+                                    drawText: false,
+                                };
+
+                                switch ((tipo || '').toString()) {
+                                    case 'Point':
+                                        barraHerramientas.drawMarker = true;
+                                        break;
+                                    case 'LineString':
+                                        barraHerramientas.drawLine = true;
+                                        break;
+                                    case 'Polygon':
+                                        barraHerramientas.drawPolygon = true;
+                                        break;
+                                }
+
+                                window.map.pm.addControls(barraHerramientas)
                             }
                         
-                            alert('Capa importada correctamente');
+                            alert(`Capa "${nombreLimpio}" importada correctamente.`);
                         } catch (err) {
                             console.error('Error al importar el shapefile:', err);
                             alert('No se pudo leer el shapefile. Asegúrate de que el ZIP contenga .shp, .shx y .dbf.');

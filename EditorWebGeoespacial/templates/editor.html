@@ -106,7 +106,7 @@
                     <button type="button" class="btn-close boton-cerrar" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="subclasForm" method="POST" action="">
+                    <form id="subclasForm" method="POST" action="" enctype="multipart/form-data">
                         {% csrf_token %}
                         {{ formSubclas.as_p}}
                         <button type="button" class="btn btn-secondary boton-cerrar" data-bs-dismiss="modal">Cancelar</button>
@@ -198,7 +198,7 @@
     const lngInicial = lngGuardada ? parseFloat(lngGuardada) : defaultLng;
     const zoomInicial = zoomGuardado ? parseInt(zoomGuardado) : defaultZoom;
 
-    var map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
+    window.map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
     calles.addTo(map);
     map.setMaxBounds(limitesMapa);
     
@@ -663,8 +663,6 @@
             }
             return cookieValue;
         }
-
-        //Para exportar ls capas
 
         //Para exportar ls capas
 

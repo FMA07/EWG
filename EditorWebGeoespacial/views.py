@@ -14,8 +14,7 @@ import zipfile
 import tempfile
 import geopandas as gpd
 from shapely.geometry import shape
-import pandas as pd
-import re
+
 
 # Create your views here.
 @login_required
@@ -56,7 +55,13 @@ def editor(request):
     return render(request, 'editor.html', context)
 
 def mapa(request):
-    return render(request, 'mapa.html')
+    categorias = Categoria.objects.all()
+    subcategorias = Subcategoria.objects.all()
+    context = {
+        "categorias": categorias,
+        "subcategorias": subcategorias,
+    }
+    return render(request, 'mapa.html', context)
 
 def pagregistro(request):
     if request.method == 'POST':
@@ -266,6 +271,45 @@ def eliminar_figura(request, figura_id):
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Método no permitido'})
 
+@csrf_exempt
+def importar_SHP(request):
+    if request.method != 'POST' or 'file' not in request.FILES:
+        return JsonResponse({'error': 'Petición inválida'}, status = 400)
+    
+    archivo_zip = request.FILES['file']
+    
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = os.path.join(temp_dir, archivo_zip.name)
+
+            with open(zip_path, 'wb') as f:
+                for chunk in archivo_zip.chunks():
+                    f.write(chunk)
+
+            gdf = gpd.read_file(f"zip://{zip_path}")
+
+            if gdf.empty:
+                return JsonResponse({'error': 'El shapefile no contiene figuras'})
+            
+            geometryTypes = {geom.geom_type for geom in gdf.geometry if geom is not None}
+
+            if not geometryTypes:
+                return JsonResponse({'error': 'El shapefile no contiene geometrías válidas'}, status= 400)
+            
+            tipoGeometria = list(geometryTypes)[0]
+
+            geojson_data = json.loads(gdf.to_json())
+
+            return JsonResponse({
+                'success': True,
+                'geojson': geojson_data,
+                'tipoGeometria': tipoGeometria
+            })
+        
+    except Exception as e:
+        print(f"Error procesando Shapefile subido: {e}")
+        return JsonResponse({'error': f'Error al procesar el Shapefile ZIP: {str(e)}'}, status = 500)
+    
 @csrf_exempt
 def exportar_SHP(request):
     if request.method != 'POST':
