@@ -52,15 +52,7 @@ body, html{
     font-weight: bold;
 }
 
-.btn-eliminar{
-    background-color: #dddddd;
-    border-style: solid;
-    border-width: 3px;
-    border-color: black;
-    font-weight: bold;
-}
-
-.btn-eliminar:hover{
+#btnEliminar:hover{
     background-color: red;
     border-style: solid;
     border-width: 3px;
@@ -153,10 +145,10 @@ body, html{
 #toggleTablas{
     background-color: #212529;
     position: absolute;
+    bottom: 3%;
+    right: 1%;
     height: 40px;
     width: 40px;
-    top: 500px;
-    left: 1400px;
     z-index: 1100;
     align-items: center;
     justify-content: center;

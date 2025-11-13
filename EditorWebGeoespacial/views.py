@@ -187,9 +187,23 @@ def obtener_config_subclasificacion(request, subclas_id):
     except Subclasificacion.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Subclasificación no encontrada'})
     
+def proyectos_filtrados(user):
+    queryset_base = Proyecto.objects.select_related('autor').prefetch_related('categoria').order_by('fecha_creacion')
+
+    if not (user.is_superuser or user.is_staff):
+        return queryset_base.filter(autor = user)
+    
+    else:
+        return queryset_base
 
 @login_required
 def proyectos(request):
+    formPoyecto = FormularioProyecto
+    proyectos_a_mostrar = proyectos_filtrados(request.user)
+
+    return render(request, 'proyectos.html', {'proyectos': proyectos_a_mostrar, 'formProyecto': formPoyecto})
+
+def guardar_proyecto(request):
     if request.method == 'POST':
         formProyecto = FormularioProyecto(request.POST, request.FILES)
         if formProyecto.is_valid():
@@ -198,7 +212,7 @@ def proyectos(request):
             proyecto.save()
             formProyecto.save_m2m()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                proyectos_queryset = Proyecto.objects.select_related('autor').prefetch_related('categoria').order_by('fecha_creacion')
+                proyectos_queryset = proyectos_filtrados(request.user)
                 proyectos_data = []
                 for proyecto in proyectos_queryset:
                     categorias_list = ", ".join([c.nombre for c in proyecto.categoria.all()])
@@ -215,11 +229,7 @@ def proyectos(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': formProyecto.errors})
             return redirect('proyectos')
-    else:
-        formProyecto = FormularioProyecto()
-        proyectos = Proyecto.objects.all()
-        return render(request, 'proyectos.html', {'proyectos': proyectos, 'formProyecto': formProyecto})
-    
+
 # Vista para eliminar un proyecto
 def eliminar_proyecto(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, pk=proyecto_id)

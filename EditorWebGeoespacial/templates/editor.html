@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Mapa{% endblock %}
+{% block title %}Editor{% endblock %}
 {% block content %}
 
 <div class="contenedor-mapa">
@@ -141,9 +141,7 @@
             <button id="btnEditarDatos" class="btn">Editar</button>
         </div>
         <hr>
-        <div id="cuerpoTablas" class="offcanvas-body small">
-            
-        </div>
+        <div id="cuerpoTablas" class="offcanvas-body small"></div>
     </div>
 </div>
 
@@ -169,80 +167,14 @@
 {% endif %}
 
 <!--ESTE SCRIPT CARGA LOS DIFERENTES TILESETS Y DESPUÉS CARGA EL MAPA, INICIANDO CON EL DE LAS CALLES-->
-<script>
-    const calles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    });
-    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles © Esri'
-    });
-    const relieve = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenTopoMap contributors'
-    })
 
-    const defaultLat = -33.03853;
-    const defaultLng = -71.60666;
-    const defaultZoom = 14;
-    var southWest = L.latLng(-33.367279, -71.78279122251949);
-    var northEast = L.latLng(-32.979154, -71.331662);
-    var limitesMapa = L.latLngBounds(southWest, northEast);
+<script type="module">
+    import {
+        inicializacionMapa,
+        mantenerVista,
+        tilesetsMapa
+    } from "{% static 'js/funcionalidadMapa.js' %}";
 
-    let latGuardada = localStorage.getItem('mapCenterLat');
-    let lngGuardada = localStorage.getItem('mapCenterLng');
-    let zoomGuardado = localStorage.getItem('mapZoom');
-
-    const latInicial = latGuardada ? parseFloat(latGuardada) : defaultLat;
-    const lngInicial = lngGuardada ? parseFloat(lngGuardada) : defaultLng;
-    const zoomInicial = zoomGuardado ? parseInt(zoomGuardado) : defaultZoom;
-
-    window.map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
-    calles.addTo(map);
-    map.setMaxBounds(limitesMapa);
-    
-
-    //FUNCION PARA GUARDAR LA VISTA ACTUAL EN LOCALSTORGAGE
-    function guardarVista(){
-        localStorage.setItem('mapCenterLat', map.getCenter().lat);
-        localStorage.setItem('mapCenterLng', map.getCenter().lng);
-        localStorage.setItem('mapZoom', map.getZoom());
-    }
-
-    map.on('moveend', guardarVista);
-</script>
-<!--ESTE SCRIPT PERMITE SELECCIONAR EL TILESET DEL MAPA-->
-<script>
-    let currentLayer = calles;
-        
-    const edicionesLayer = L.layerGroup().addTo(map);
-        
-    function cambiarMapa(layer){
-        if (currentLayer) map.removeLayer(currentLayer);
-        layer.addTo(map);
-        currentLayer = layer;
-    }
-    //listeners para las distintas opciones del menú de mapas
-    document.getElementById('mapaSatelital').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(satelite);
-    });
-    document.getElementById('mapaCalles').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(calles);
-    });
-    document.getElementById('mapaRelieve').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(relieve);
-    });
-
-</script>
-
-<!-------------------------------------------------FUNCIONALIDADES VARIAS---------------------------------------->
-
-<!--LISTENER--------->
-<script>
     window.capasVisibles = window.capasVisibles || {};
     window.capaActualmenteEditada = null;
     let capaEnVista = null;
@@ -257,6 +189,16 @@
     document.addEventListener("DOMContentLoaded", function () {
         
         var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
+
+        const {map, calles, satelite, relieve} = inicializacionMapa()
+
+        window.map = map
+
+        mantenerVista(map)
+
+        tilesetsMapa(map, calles, satelite, relieve)
+
+        window.editableLayers = new L.FeatureGroup().addTo(map)
 
         botonCategorias.forEach(function(boton){
             boton.addEventListener("click", function(e){
