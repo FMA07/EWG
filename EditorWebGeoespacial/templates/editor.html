@@ -175,6 +175,10 @@
         tilesetsMapa
     } from "{% static 'js/funcionalidadMapa.js' %}";
 
+    import {
+        mostrarProyectoActivo,
+    } from "{% static 'js/herramientasEdicionMapa.js' %}"
+
     window.capasVisibles = window.capasVisibles || {};
     window.capaActualmenteEditada = null;
     let capaEnVista = null;
@@ -187,6 +191,8 @@
     //FUNCIONES DE LA LISTA DE CATEGORIAS
     
     document.addEventListener("DOMContentLoaded", function () {
+
+        mostrarProyectoActivo()
         
         var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
 

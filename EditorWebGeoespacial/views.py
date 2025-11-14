@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +19,21 @@ from shapely.geometry import shape
 # Create your views here.
 @login_required
 def editor(request):    
+    #Para filtrar las categoriasque aparecen
+    proyectoId = request.session.get('proyecto_activo_id')
+
+    if proyectoId:
+        try:
+            proyecto = Proyecto.objects.get(id=proyectoId, autor=request.user)
+            categorias = proyecto.categoria.all()
+
+        except Proyecto.DoesNotExist:
+            categorias = Categoria.objects.none()
+
+    else:
+        categorias = Categoria.objects.none()
+
+    #Forms a eliminar
     formCategoria = FormularioCategoria(data= request.POST, files= request.FILES)
     formSubcategoria = FormularioSubcategoria(data= request.POST, files= request.FILES)
     formSubclas = FormularioSubclasificacion(data= request.POST, files= request.FILES)
@@ -42,7 +57,6 @@ def editor(request):
         formSubcategoria = FormularioSubcategoria()
         formSubclas = FormularioSubclasificacion()
 
-    categorias = Categoria.objects.all()
     subcategorias = Subcategoria.objects.all()
     context = {
         "categorias": categorias,
@@ -76,7 +90,87 @@ def pagregistro(request):
 
 @login_required
 def listaCategorias(request):
-    return render(request, 'categorias.html')
+    categorias = Categoria.objects.all()
+    context = {
+        'categorias': categorias
+    }
+    return render(request, 'categorias.html', context)
+
+#-------------------------------------------------/CRUD CAPAS\----------------------------------------------------------------
+@permission_required('is_staff', login_url='/')
+def admin_menu(request):
+    return render(request, 'CRUDCapas/adminMenu.html')
+
+@permission_required('is_staff', login_url='/')
+def admin_categorias(request):
+    formCategoria = FormularioCategoria()
+    categorias = Categoria.objects.all().order_by('nombre')
+    context = {
+        'categorias': categorias,
+        'formCategoria': formCategoria
+    }
+    return render(request, 'CRUDCapas/adminCategorias.html', context)
+
+def guardar_categoria(request):
+    if request.method == 'POST':
+        form = FormularioCategoria(request.POST, request.FILES)
+        if form.is_valid():
+            nueva_categoria = form.save()
+
+            categorias = list(Categoria.objects.values('id', 'nombre'))
+            return JsonResponse({
+                'success': True,
+                'nombre': nueva_categoria.nombre,
+                'id': nueva_categoria.id,
+                'categorias': categorias
+            })
+        return JsonResponse({'success': False, 'errors': form.errors})
+
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+def editar_categoria(request, categoria_id):
+    categoria = get_object_or_404(Categoria, pk=categoria_id)
+    if request.method == 'GET':
+        return JsonResponse({
+            'id': categoria.id,
+            'nombre': categoria.nombre
+        })
+    elif request.method == 'POST':
+        form = FormularioCategoria(request.POST, instance=categoria)
+
+        if form.is_valid():
+            form.save()
+
+            categorias = list(Categoria.objects.values('id', 'nombre'))
+
+            return JsonResponse({
+                'success': True,
+                'nombre': categorias.nombre,
+                'id': categorias.id,
+                'categorias': categorias
+            })
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors})
+    
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+
+def eliminar_categoria(request, categoria_id):
+    categoria = get_object_or_404(Categoria, pk=categoria_id)
+    if request.method == 'POST':
+        categoria.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+
+def obtener_categoria(request, categoria_id):
+    categoria = get_object_or_404(Categoria, id=categoria_id)
+
+    return JsonResponse({
+        'id': categoria.id,
+        'nombre': categoria.nombre
+    })
+
+#____________________________________________________________________________________________________________________________
 
 #Vista para eliminar el localStorage al cerrar sesión
 def paglogout(request):
@@ -97,11 +191,14 @@ def guardar_por_ajax(request):
             form = FormularioCategoria(request.POST, request.FILES)
             if form.is_valid():
                 categoria = form.save()
+
+                categorias = list(Categoria.objects.values('id', 'nombre'))
                 return JsonResponse({
                     'success': True,
                     'tipo': 'categoria',
                     'nombre': categoria.nombre,
                     'id': categoria.id,
+                    'categorias':categorias,
                 })
             else:
                 return JsonResponse({'success': False, 'errors': form.errors})
@@ -211,6 +308,10 @@ def guardar_proyecto(request):
             proyecto.autor = request.user
             proyecto.save()
             formProyecto.save_m2m()
+
+            #Para marcar el proyecto como activo
+            request.session['proyecto_activo_id'] = proyecto.id
+
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 proyectos_queryset = proyectos_filtrados(request.user)
                 proyectos_data = []
@@ -229,6 +330,23 @@ def guardar_proyecto(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': formProyecto.errors})
             return redirect('proyectos')
+
+#Función para cargar un proyecto
+@login_required
+def activar_proyecto(request, proyecto_id):
+    proyecto = get_object_or_404(Proyecto, pk=proyecto_id, autor=request.user)
+    Proyecto.objects.filter(autor=request.user).update(activo=False)
+    request.session['proyecto_activo_id'] = proyecto.id
+    categoria_ids = list(proyecto.categoria.values_list('id', flat=True))
+
+    proyecto.activo = True
+    proyecto.save()
+
+    return JsonResponse({
+        'success': True,
+        'proyecto_id': proyecto_id,
+        'categoria_ids': categoria_ids,
+    })
 
 # Vista para eliminar un proyecto
 def eliminar_proyecto(request, proyecto_id):

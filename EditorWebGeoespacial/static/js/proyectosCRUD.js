@@ -3,19 +3,19 @@ const proyectoForm = document.getElementById('formProyecto');
 
 //Función para conseguir el csfrtoken
 export function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
     }
+    return cookieValue;
+}
 
 //Listener que carga el formulario para un nuevo proyecto y lo envía
 export function formularioNuevoProyecto() {
@@ -122,6 +122,43 @@ export function actualizarTablaProyectos(proyectos){
 
     tabla += '</tbody></table>';
     seccionTablaProyectos.innerHTML = tabla;
+}
+
+export function cargarProyecto(){
+    const btnCargar = document.getElementById('btnCargarProyecto')
+    btnCargar.addEventListener('click', async () => {
+        const seleccionados = document.querySelectorAll('#seccionTablaProyectos input[type="checkbox"]:checked')
+
+        if (seleccionados.length !== 1) {
+            alert('Selecciona solamente UN (1) proyecto para cargar')
+            return;
+        }
+
+        try{
+            const proyectoId = seleccionados[0].value
+            const r = await fetch(`/activar_proyecto/${proyectoId}/`)
+
+            if (!r.ok) {
+                throw new Error(`Error HTTP: ${r.status} ${r.statusText}`)
+            }
+
+            const data = await r.json(); 
+
+            if (data.success) {
+                console.log("Proyecto cargado:", data.proyecto_id);
+                console.log("Categorías activas:", data.categoria_ids);
+
+                localStorage.setItem("proyecto_activo", data.proyecto_id);
+                localStorage.setItem("categorias_activas", JSON.stringify(data.categoria_ids));
+
+            } else {
+                throw new Error(data.message || "Fallo en la carga del proyecto (data.success = false)")
+            }
+        } catch (error) {
+            console.error("Error cargando proyecto:", error);
+            alert(`Hubo un error al cargar el proyecto: ${error.message}`);
+        }
+    })
 }
 
 export function eliminarProyecto(){

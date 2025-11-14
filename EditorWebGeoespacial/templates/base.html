@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'app.css' %}">
 </head>
-<body style="background-color: #f8f8f7;">
+<body>
     <nav class="barraSuperior navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
             <button id="togglerBarra" class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,11 +44,15 @@
                         <ul class="dropdown-menu">
                             <li><a id="botonCrearProyecto" class="dropdown-item" href="{% url 'proyectos' %}">Proyectos</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a id="btnCRUDCategorias" class="dropdown-item" href="{% url 'listaCategorias' %}">Categorías</a></li>
+                            <li><a id="botonCategorias" class="dropdown-item" href="{% url 'listaCategorias' %}">Categorías</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a id="botonExportarCapa" class="dropdown-item" href="">Exportar capa</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a id="botonImportarCapa" class="dropdown-item" href="">Importar capa</a></li>
+                            {% if user.is_superuser or user.is_staff %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a id="botonCRUDCapas" class="dropdown-item" href="{% url 'adminmenu' %}">CRUD Capas</a></li>
+                            {% endif %}
                         </ul>
                     </li>
                     {% endif %}

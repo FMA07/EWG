@@ -6,6 +6,7 @@
 body, html{
     height: 100%;
     margin: 0;
+    background-color: #f8f8f7;
 }
 
 #botonExportar{

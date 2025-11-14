@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proyectos</title>
+    <title>Document</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'app.css' %}">
 </head>
@@ -16,7 +16,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'editor' %}">Mapa</a>
                     </li>
-                </ul> 
+                </ul>  
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
@@ -26,83 +26,72 @@
                             <a class="nav-link" href="{% url 'logout' %}">Cerrar sesión</a>
                         </li>
                     {% endif %}
-                </ul>  
+                </ul>   
             </div>
         </div>
     </nav>
     <div class="flexbox">
-        <div id="listaProyectos">
+        <div id="listaCategorias">
             <div class="row" style="margin-top: 2px;">
                 <div class="col-lg-9" style="align-items: center; align-content: center;">
-                    <h5>Proyectos</h5>
+                    <h5>Categorías</h5>
                 </div>
                 <div class="col-lg-3">
-                    <button class="btn btn-proyectos" type="button" data-bs-toggle="offcanvas" data-bs-target="#formularioProyecto" aria-controls="Formulario Proyecto">
-                        Nuevo proyecto
+                    <button class="btn btn-proyectos" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFormulario" aria-controls="Formulario Categoria">
+                        Nueva categoría
                     </button>
-                    <button id="btnCargarProyecto" class="btn btn-proyectos" type="button">
-                        Cargar proyecto
+                    <button id="botonEditar" class="btn btn-proyectos" type="button">
+                        Editar
                     </button>
                     <button id="btnEliminar" class="btn btn-proyectos" type="button">
                         Eliminar
                     </button>
                 </div>
             </div>
-            <div id="seccionTablaProyectos">
-                <table class="table table-striped table-sm">
+            <div id="seccionTablaCategorias">
+                <table id="tablaCategorias" class="table table-striped table-sm">
                     <thead>
                         <tr>
                             <th>Nombre</th>
-                            <th>Autor</th>
-                            <th>Fecha de creación</th>
-                            <th>Categoría asociadas</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for proyecto in proyectos %}
-                            <tr>
-                                <td><input class="form-check-input" type="checkbox" value="{{ proyecto.id}}"></input>{{ proyecto.nombre }}</td>
-                                <td>{{ proyecto.autor.username }}</td>
-                                <td>{{ proyecto.fecha_creacion }}</td>
-                                <td>
-                                    {% for categoria in proyecto.categoria.all %}
-                                        {{ categoria.nombre }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                            </tr>
+                        {% for categoria in categorias %}
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" value="{{categoria.id}}">{{ categoria.nombre }}</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
-        <div id="formularioProyecto" class="offcanvas offcanvas-end" tabindex="-1" aria-labelledby="formularioProyecto">
+        <div id="offcanvasFormulario" class="offcanvas offcanvas-end" tabindex="-1" aria-labelledby="formularioCategoria">
             <div class="offcanvas-header">
-                <h5 class="offcanvas-title">Formulario nuevo proyecto</h5>
+                <h5 id="tituloFormularioCategoria" class="offcanvas-title">Nueva categoría</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body">
-                <form id="formProyecto" method="POST" action="{% url 'guardar_proyecto' %}">
+                <form id="formCategoria" method="POST" action="">
                     {% csrf_token %}
-                    {{ formProyecto.as_p }}
-                    <button type="submit" class="btn btn-primary">Crear proyecto</button>
+                    {{ formCategoria.as_p }}
+                    <button id="btnSubmitCategoria" type="submit" class="btn btn-primary">Guardar</button>
                 </form>
             </div>
         </div>
-        
     </div>
 </body>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
 <script type="module">
-
     import {
-        formularioNuevoProyecto,
-        actualizarTablaProyectos,
-        cargarProyecto,
-        eliminarProyecto
-    } from "{% static 'js/proyectosCRUD.js' %}"
-    cargarProyecto();
-    eliminarProyecto();
-</script>
+        guardarCategoria,
+        editarCategoria,
+        actualizarTablaCategorias,
+        eliminarCategoria
+    } from "{% static 'js/categoriasCRUD.js' %}"
 
+    guardarCategoria();
+    editarCategoria();
+    eliminarCategoria()
+</script>
 </html>
