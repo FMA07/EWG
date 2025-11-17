@@ -11,6 +11,7 @@ urlpatterns = [
     path('adminmenu/admincategorias/', views.admin_categorias, name='admin_categorias'),
     path('guardar_categoria/', views.guardar_categoria, name="guardar_categoria"),
     path('editar_categoria/<int:categoria_id>/', views.editar_categoria, name='editar_categoria'),
+    path('asociar_categoria_a_proyecto/', views.asociar_categoria_a_proyecto, name='asociar_categorias_a_proyecto'),
     path('eliminar_categoria/<int:categoria_id>/', views.eliminar_categoria, name='eliminar_categoria'),
     path('', auth_views.LoginView.as_view(template_name="login.html"), name='login'),
     path('logout', auth_views.LogoutView.as_view(next_page='mapa'), name='logout'),

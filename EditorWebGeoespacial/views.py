@@ -171,6 +171,33 @@ def obtener_categoria(request, categoria_id):
     })
 
 #____________________________________________________________________________________________________________________________
+@login_required
+def asociar_categoria_a_proyecto(request):
+    if request.method == "POST":
+        proyecto_id = request.POST.get('proyecto_id')
+        categorias_ids = request.POST.getlist("categorias")
+
+        if not proyecto_id or not categorias_ids:
+            return JsonResponse({"success": False, "error": 'Faltan datos.'})
+        
+        proyecto = get_object_or_404(Proyecto, id= proyecto_id, autor=request.user)
+
+        categorias_ya_asociadas = []
+        categorias_agregadas = []
+
+        for cat_id in categorias_ids:
+            categoria = Categoria.objects.get(id = cat_id)
+            if proyecto.categoria.filter(id = cat_id).exists():
+                categorias_ya_asociadas.append(categoria.nombre)
+
+            else:
+                proyecto.categoria.add(cat_id)
+                categorias_agregadas.append(categoria.nombre)
+
+        return JsonResponse({"success": True, "categorias_agregadas": categorias_agregadas, "categorias_ya_asociadas": categorias_ya_asociadas})
+    
+    return JsonResponse({"success": False, "error": "Método no permitido"})
+
 
 #Vista para eliminar el localStorage al cerrar sesión
 def paglogout(request):

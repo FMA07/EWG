@@ -45,18 +45,27 @@ class Subclasificacion(models.Model):
     
     def __str__(self):
         return self.nombre
-#Estoy pensando en eliminar Capa. Proyecto cumple la misma función
-class Capa(models.Model):
-    nombre              = models.CharField(max_length=100)
-    autor               = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    fecha_creacion      = models.DateTimeField(auto_now_add=True)
+
+#_________________________________________________________Capas importadas________________________________
+class Capa_importada(models.Model):
+    nombre              = models.CharField(max_length=255)
+    proyecto            = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="capa_importada")
+    usuario             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    tipo_geometria      = models.CharField(max_length=20)
+
+    def __str__(self):
+        return self.nombre
+    
+class Feature(models.Model): #Para cada fila del shapefile. guarda atributos y geometría
+    capa                = models.ForeignKey(Capa_importada, on_delete=models.CASCADE, related_name="features")
+    geom                = models.GeometryField()
+    atributos           = models.JSONField(default=dict)
 
 #__________________________________________//CLASE BASE\\______________________________________
 class Figura(models.Model):
     coordenadas         = models.GeometryField()
     atributos           = models.JSONField(default=dict, blank=True)
     subclasificacion    = models.ForeignKey(Subclasificacion, on_delete=models.CASCADE)
-    capa                = models.ForeignKey(Capa, on_delete=models.CASCADE, related_name="figuras", null=True, blank=True)
 
     def clean(self):
         tipo_esperado = self.subclasificacion.tipo_geometria

@@ -36,11 +36,8 @@
                     <h5>Categorías</h5>
                 </div>
                 <div class="col-lg-3">
-                    <button class="btn btn-proyectos" type="button">
-                        Crear nueva categoría
-                    </button>
-                    <button class="btn btn-proyectos" type="button" >
-                        Asociar categoría a capa
+                    <button class="btn btn-proyectos" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAsociar">
+                        Asociar categoría a proyecto
                     </button>
                     <button id="btnEliminar" class="btn btn-proyectos" type="button">
                         Eliminar
@@ -48,7 +45,7 @@
                 </div>
             </div>
             <div id="secciónTablaCategorias">
-                <table id="tablaCategorias">
+                <table id="tablaCategorias" class="table table-striped">
                     <thead>
                         <tr>
                             <th>Nombre</th>
@@ -64,8 +61,32 @@
                 </table>
             </div>
     </div>
+    <div id="offcanvasAsociar" class="offcanvas offcanvas-end" tabindex="-1" aria-labelledby="Asociar Categoria">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Asociar a proyecto</h5>
+        </div>
+        <div class="offcanvas-body">
+            <label for="proyectoSelect">Seleccionar proyecto</label>
+            <select id="proyectoSelect" class="form-select">
+                {% for proyecto in user.proyecto_set.all %}
+                    <option value="{{ proyecto.id }}">{{ proyecto.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" id="btnAsociarConfirmar">Asociar</button>
+        </div>
+    </div>
     
 </body>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+
+<script type="module">
+    import {
+        asociarCategoria
+    } from "{% static 'js/categoriasUsuario.js' %}"
+
+    document.addEventListener('DOMContentLoaded', () => {
+        asociarCategoria()
+    })
+</script>
 </html>
