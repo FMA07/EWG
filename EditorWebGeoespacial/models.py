@@ -12,6 +12,7 @@ class Proyecto(models.Model):
     categoria           = models.ManyToManyField('Categoria', related_name= 'proyectos')
 
     activo              = models.BooleanField(default=False)
+    publico             = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.nombre}. Fecha de creación: {self.fecha_creacion}. Autor: {self.autor.username}'
@@ -53,32 +54,39 @@ class Capa_importada(models.Model):
     usuario             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     tipo_geometria      = models.CharField(max_length=20)
 
+    class Meta:
+        unique_together = ('proyecto', 'nombre')
+    
     def __str__(self):
         return self.nombre
-    
-class Feature(models.Model): #Para cada fila del shapefile. guarda atributos y geometría
-    capa                = models.ForeignKey(Capa_importada, on_delete=models.CASCADE, related_name="features")
-    geom                = models.GeometryField()
-    atributos           = models.JSONField(default=dict)
 
 #__________________________________________//CLASE BASE\\______________________________________
 class Figura(models.Model):
-    coordenadas         = models.GeometryField()
+    proyecto            = models.ForeignKey(Proyecto, on_delete=models.CASCADE)
+    usuario             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    geom                = models.GeometryField(srid=32719)
     atributos           = models.JSONField(default=dict, blank=True)
-    subclasificacion    = models.ForeignKey(Subclasificacion, on_delete=models.CASCADE)
+    subclasificacion    = models.ForeignKey(Subclasificacion, null=True, blank=True, on_delete=models.SET_NULL)
+    capa_importada      = models.ForeignKey(Capa_importada, null=True, blank=True, on_delete=models.CASCADE, related_name="features")
+
+    tipo                = models.CharField(max_length=20, choices=[
+        ("usuario", "Usuario"),
+        ("importada", "Importada")
+    ])
 
     def clean(self):
-        tipo_esperado = self.subclasificacion.tipo_geometria
-        tipo_recibido = self.coordenadas.geom_type
+        if self.subclasificacion:
+            tipo_esperado = self.subclasificacion.tipo_geometria
+            tipo_recibido = self.geom.geom_type
 
         if tipo_recibido != tipo_esperado:
             raise ValidationError(f'La subclasificación requiere geometría de tipo {tipo_esperado}, pero se recibió {tipo_recibido}')
 
-        if not isinstance(self.coordenadas, dict) or 'type' not in self.coordenadas:
+        if not isinstance(self.geom, dict) or 'type' not in self.geom:
             raise ValidationError('El campo coordenadas debe tener un objeto GeoJSON válido.')
 
     def __str__(self):
-       return f'Atributos: {self.atributos} Coordenadas: {self.coordenadas}'
+       return f'Atributos: {self.atributos}'
     
 #_________________________________________//OTROS\\_________________________________
 

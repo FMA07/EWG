@@ -24,7 +24,10 @@ urlpatterns = [
     path('guardar_proyecto/', views.guardar_proyecto, name='guardar_proyecto'),
     path('eliminar_proyecto/<int:proyecto_id>/', views.eliminar_proyecto, name='eliminar_proyecto'),
     path('guardar_figura/', views.guardar_figura, name='guardar_figura'),
+    path('editar_figura/<int:figura_id>/', views.editar_figura, name='editar_figura'),
     path('eliminar_figura/<int:figura_id>/',views.eliminar_figura, name='eliminar_figura'),
     path('importar_SHP/', views.importar_SHP, name='importar_SHP'),
+    path('capas_del_proyecto/', views.capas_del_proyecto, name='capas_del_proyecto'),
     path('exportar_SHP/', views.exportar_SHP, name='exportar_SHP'),
+    path('eliminar_capa_importada/<int:capa_id>/', views.eliminar_capa_importada, name='eliminar_capa_importada'),
     ]

@@ -69,3 +69,4 @@ export function tilesetsMapa(map, calles, satelite, relieve) {
         cambiarMapa(relieve);
     });
 }
+

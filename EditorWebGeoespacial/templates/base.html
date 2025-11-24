@@ -55,6 +55,13 @@
                             {% endif %}
                         </ul>
                     </li>
+                    <li class="nav-item" style="font-weight: bold; color: white;">
+                        <a class="nav-link" style="pointer-events: none; cursor: default;">
+                            {% if proyecto_activo %}
+                                Proyecto activo: {{ proyecto_activo.nombre }}
+                            {% endif %}
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -91,177 +98,33 @@
     {% endblock %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+    <script type="module">
+        import {
+            cargarCapas,
+            iniciarImportacionCapa,
+            alternarVisibilidadCapa,
+            exportarCapas,
+        } from "{% static 'js/funcionalidadCapas.js' %}"
 
-    <script>
         window.listaCapas = []
         document.addEventListener('DOMContentLoaded', () => {
-            const botonImportar = document.getElementById('botonImportarCapa');
-            const botonGuardar = document.getElementById('botonGuardarCapa');
-            const listaCapasImportadas = document.getElementById('listaCapasImportadas')
-            const seccionLista = document.getElementById('seccionCapasImportadas')
-            const divisorSeccion = document.getElementById('sectionDivider')
 
-            //PARA AGREGAR LAS CAPAS IMPORTADAS A UNA LISTA
-            function agregarCapaALista(nombreLimpio){
-                if (!listaCapasImportadas) return;
+            const botonImportar = document.getElementById('botonImportarCapa')
+            const botonExportar = document.getElementById('botonExportarCapa')
 
-                const divider = document.createElement('hr')
-                const li = document.createElement('li')
-                const a = document.createElement('a')
-                const checkbox = document.createElement('input')
+            if (botonImportar) {
+                botonImportar.addEventListener('click', (e) => {
+                    e.preventDefault()
 
-                li.className = 'lista-capas-importadas'
-
-                a.href = '#';
-                a.style.textDecoration = 'none'
-                a.style.color = 'black'
-                a.textContent = nombreLimpio
-                a.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if(typeof window.alternarVisibilidadCapa === 'function') {
-                        window.alternarVisibilidadCapa(nombreLimpio, e.currentTarget)
+                    if (typeof iniciarImportacionCapa === 'function') {
+                        iniciarImportacionCapa()
+                    } else {
+                        console.error ("iniciarImportacionCapa() no está definida")
                     }
                 })
-                li.appendChild(a)
-                listaCapasImportadas.appendChild(li)
-                listaCapasImportadas.appendChild(divider)
-
-                seccionLista.style.display = 'block'
-                divisorSeccion.style.display = 'block'
-            }
-            window.agregarCapaALista = agregarCapaALista
-            if (botonImportar) {
-                botonImportar.addEventListener('click', async (e) => {
-                    e.preventDefault();
-
-                    // Crear input para seleccionar el archivo .zip
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.zip';
-                    input.onchange = async (event) => {
-                        const file = event.target.files[0];
-                        if (!file) return;
-
-                        const capa = file.name
-                        let nombreLimpio = capa.replace(/\.[^/.]+$/, "")
-                        const formData = new FormData();
-                        formData.append('file', file);
-
-                        try {
-                            const response = await fetch('/importar_SHP/', {
-                                method: 'POST',
-                                body: formData
-                            })
-
-                            const data = await response.json();
-
-                            if (!data || data.success === false) {
-                                alert(data.error || 'Error al importar shapefile');
-                                return;
-                            }
-
-                            const geojson = data.geojson;
-                            const tipo = data.tipoGeometria || data.tipo_geometria || data.tipo;
-                            //Para guardar la capa en localStorage
-                            localStorage.setItem(`capa_data_${nombreLimpio}`, JSON.stringify(geojson))
-                            window.listaCapas = window.listaCapas || [];
-                            window.listaCapas.push(nombreLimpio);
-                            localStorage.setItem('capas', JSON.stringify(window.listaCapas))
-
-                            if(typeof window.agregarCapaALista === 'function') {
-                                agregarCapaALista(nombreLimpio)
-                            }
-
-                            //Para agregar la capa al mapa
-                            const capaLeaflet = L.geoJSON(geojson, {
-                                onEachFeature: (feature, layer) => {
-                                    layer.feature = feature;
-                                    layer.feature.properties = layer.feature.properties || {}
-                                    layer.feature.properties.__origenCapa = nombreLimpio;
-
-                                    if (window.editableLayers) {
-                                        window.editableLayers.addLayer(layer)
-                                    }
-                                    if (typeof window.attachEditListeners === 'function') {
-                                        window.attachEditListeners(layer)
-                                    }
-
-                                    if (typeof window.mostrarDatosOffcanvas === 'function') {
-                                        layer.on('click', function(e){
-                                            window.mostrarDatosOffcanvas(e.target)
-                                        })
-                                    }
-                                }
-                            }).addTo(map)
-                            
-                            if (window.map && capaLeaflet.getBounds().isValid()) {
-                                window.map.fitBounds(capaLeaflet.getBounds());
-                            }
-                            //Para activar la herramienta según el tipo de geometría
-                            if (window.map && window.map.pm) {
-                                window.map.pm.removeControls()
-
-                                const barraHerramientas = {
-                                    position: 'bottomleft',
-                                    drawMarker: false,
-                                    drawLine: false,
-                                    drawPolygon: false,
-                                    drawCircle: false,
-                                    drawCircleMarker: false,
-                                    drawRectangle: false,
-                                    rotateMode: false,
-                                    editMode: true,
-                                    dragMode: true,
-                                    removalMode: true,
-                                    cutPolygon: false,
-                                    drawText: false,
-                                };
-
-                                switch ((tipo || '').toString()) {
-                                    case 'Point':
-                                        barraHerramientas.drawMarker = true;
-                                        break;
-                                    case 'LineString':
-                                        barraHerramientas.drawLine = true;
-                                        break;
-                                    case 'Polygon':
-                                        barraHerramientas.drawPolygon = true;
-                                        break;
-                                }
-
-                                window.map.pm.addControls(barraHerramientas)
-                            }
-                        
-                            alert(`Capa "${nombreLimpio}" importada correctamente.`);
-                        } catch (err) {
-                            console.error('Error al importar el shapefile:', err);
-                            alert('No se pudo leer el shapefile. Asegúrate de que el ZIP contenga .shp, .shx y .dbf.');
-                        }
-                    };
-                
-                    input.click();
-                });
-            }
-            //PARA EXPORTAR LA CAPA CREADA CON TODAS SUS FIGURAS
-
-            function cargarcapas(){
-                const capasGuardadasJSON = localStorage.getItem('capas');
-                if(!capasGuardadasJSON) return;
-
-                try {
-                    const listaCapasArray = JSON.parse(capasGuardadasJSON);
-                    window.listaCapas = listaCapasArray;
-
-                    listaCapasArray.forEach(nombreLimpio => {
-                        agregarCapaALista(nombreLimpio)
-                    })
-                    console.log('Capas cargadas desde localStorage')
-                } catch (error){
-                    console.error('Error cargando lista de capas', error)
-                }
             }
 
-        cargarcapas();
+            exportarCapas()
         });
     </script>
 

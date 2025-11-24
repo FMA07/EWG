@@ -14,11 +14,13 @@
                 <ul style="list-style-type: none; margin-left: -20px;">
                     {% if user.is_authenticated %}
                     <li class="lista-categorias">
+                        {% if user.is_superuser %}
                         <div class="contenedor-categorias">
                             <button class="sidebar-options" data-bs-toggle="modal" data-bs-target="#modalEstaticoCategoria" style="font-weight: bold; display: block;">
                                 Crear nueva categoría
                             </button>
                         </div>
+                        {% endif %}
                     </li>
                     {% endif %}
                     {% for categoria in categorias %}
@@ -33,6 +35,7 @@
                         <ul class="lista-subcategorias" style="display: none; list-style-type: none; margin-left: -20px;">
                             {% if user.is_authenticated %}
                             <li>
+                                {% if user.is_superuser %}
                                 <div class="contenedor-subcategorias">
                                     <button class="sidebar-options crear-subcat-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubcategoria" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
                                         Crear nueva subcategoría
@@ -43,6 +46,7 @@
                                         Crear nueva subclasificación
                                     </button>
                                 </div>
+                                {% endif %}
                             </li>
                             {% endif %}
                             <li class="subcat-list-items" id="subcats-{{ categoria.id }}"></li>
@@ -177,24 +181,54 @@
 
     import {
         mostrarProyectoActivo,
-    } from "{% static 'js/herramientasEdicionMapa.js' %}"
+    } from "{% static 'js/proyectosCRUD.js' %}"
+
+    import {
+        iniciarImportacionCapa,
+        cargarCapas,
+        alternarVisibilidadCapa,
+        crearFigura,
+        eliminarFigura,
+        asignarDatosFigura,
+        activarMododibujo,
+        alternarVisibilidad,
+        actualizarVisibilidadFigurasUsuario,
+    } from "{% static 'js/funcionalidadCapas.js' %}"
+
+    import {
+        toggleSidebar,
+        inicializadorSidebar,
+        fetchContenidoCategoria,
+        fetchContenidoSubcategoria,
+        mostrarSubclasificacion,
+    } from "{% static 'js/funcionalidadSidebar.js' %}"
+
+    import {
+        mostrarDatosOffcanvas,
+        generarFormularioEditable,
+    } from "{% static 'js/formularios.js' %}"
 
     window.capasVisibles = window.capasVisibles || {};
-    window.capaActualmenteEditada = null;
-    let capaEnVista = null;
+    window.visibilidadFiguras = window.visibilidadFiguras || {};
     window.camposOcultos = [
         '__subclasificacionId',
         '__subclasificacionNombre',
         '__origenCapa',
     ]
 
+    document.addEventListener("change", function (e) {
+        if (e.target.matches(".categoria-checkbox") || 
+            e.target.matches(".subcat-checkbox") ||
+            e.target.matches(".subclas-checkbox")) { 
+            alternarVisibilidad(e);
+        }
+    });
+
     //FUNCIONES DE LA LISTA DE CATEGORIAS
-    
+    window.actualizarVisibilidadFigurasUsuario = actualizarVisibilidadFigurasUsuario;
     document.addEventListener("DOMContentLoaded", function () {
 
         mostrarProyectoActivo()
-        
-        var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
 
         const {map, calles, satelite, relieve} = inicializacionMapa()
 
@@ -204,161 +238,27 @@
 
         tilesetsMapa(map, calles, satelite, relieve)
 
+        cargarCapas(map)
+
         window.editableLayers = new L.FeatureGroup().addTo(map)
 
-        botonCategorias.forEach(function(boton){
-            boton.addEventListener("click", function(e){
-                e.preventDefault();
+        toggleSidebar()
+        
+        inicializadorSidebar()
 
-                var listaCategorias = this.closest('.lista-categorias');
-                var listaSubcategoriasUl = listaCategorias ? listaCategorias.querySelector('.lista-subcategorias') : null;
-                const categoriaId = this.dataset.id;
+        crearFigura()
 
-                if (listaSubcategoriasUl) {
-
-                    const seAbre = listaSubcategoriasUl.style.display === 'none' || !listaSubcategoriasUl.style.display;
-
-                    if (seAbre) {
-                        document.querySelectorAll('.lista-subcategorias').forEach(ul => {
-                            if (ul !== listaSubcategoriasUl) {
-                                ul.style.display = 'none';
-                            }
-                        });
-                        
-                        listaSubcategoriasUl.style.display = 'block';
-                        fetchContenidoCategoria(categoriaId, listaCategorias);
-                    } else {
-                        listaSubcategoriasUl.style.display = 'none';
-                        
-                    }
-                }
-            })
-        });
+        eliminarFigura()
         
 
-        // CODIGO PARA CARGAR EL CONTENIDO DE LAS CATEGORIAS Y SUBCATEGORIAS
-        function fetchContenidoCategoria(categoriaId, listaCategorias) {
-            const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
-            const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
 
-            subcatListContainer.innerHTML = '<li>Cargando...</li>';
-            subclasListContainer.innerHTML = '';
 
-            fetch(`/obtener_contenido_categoria/${categoriaId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    subcatListContainer.innerHTML = '';
+        
+        
 
-                    if (!data) {
-                        subcatListContainer.innerHTML = `<li>Error cargando contenido: ${data.error}`;
-                        return
-                    }
+        
 
-                    if (data.subcategorias) {
-                        data.subcategorias.forEach(sub => {
-                            const li = document.createElement('li');
-                            const itemContainer = document.createElement('div');
-                            itemContainer.className = 'contenedor-subcategorias';
-
-                            const checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.checked = true;
-                            checkbox.className = 'form-check-input subitem-checkbox';
-                            checkbox.dataset.id = sub.id;
-                            checkbox.dataset.tipo = 'subcategoria';
-
-                            const btn = document.createElement('button');
-                            btn.className = 'sidebar-suboption';
-                            btn.dataset.id = sub.id;
-                            btn.textContent = sub.nombre;
-
-                            btn.addEventListener('click', function(event){
-                                event.stopPropagation();
-                                fetchContenidoSubcategoria(sub.id, this); 
-                            });
-
-                            itemContainer.appendChild(checkbox);
-                            itemContainer.appendChild(btn)
-
-                            li.appendChild(itemContainer);
-                            subcatListContainer.appendChild(li);
-                        });
-                    }
-
-                    if (data.subclasificaciones_cat) {
-                        mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error cargando categoría: ', err);
-                    subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
-                });
-        }
-
-        //Funciones auxiliares para el fetch de subcategorias
-        function fetchContenidoSubcategoria(subId, clickedButton){
-            const subcatLi = clickedButton.closest('li');
-            const subclasId = `subclas-for-sub-${subId}`;
-            const elementoSubclas = document.getElementById(subclasId);
-
-            if (elementoSubclas) {
-                elementoSubclas.remove()
-                return; 
-            }
-
-            const subclasLi = document.createElement('li');
-            subclasLi.id = `subclas-for-sub-${subId}`;
-            subclasLi.className = 'subclas-injected-li'
-            subclasLi.innerHTML ='<p style="text-align: center;">Cargando figuras...</p>';
-
-            subcatLi.after(subclasLi);
-
-            fetch(`/obtener_contenido_subcategoria/${subId}/`)
-                .then(response => response.json())
-                .then(data =>{
-                    mostrarSubclasificacion(data.items, subclasLi, subId);
-                })
-                .catch(err => {
-                    console.error('Error cargando las subclasificaciones: ', err),
-                    subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
-                })
-        }
-
-        function mostrarSubclasificacion(items, container, subId){
-            container.innerHTML = '';
-            
-            if (items) {
-
-                items.forEach(subclas => {
-                    const itemContainer = document.createElement('div');
-                    itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
-
-                    const checkbox = document.createElement('input');
-                    checkbox.className = 'form-check-input subitem-checkbox';
-                    checkbox.type = 'checkbox';
-                    checkbox.checked = true;
-                    checkbox.dataset.id = subclas.id;
-                    checkbox.dataset.tipo = 'subclasificacion'
-
-                    const subclasBtn = document.createElement('button');
-                    subclasBtn.className = 'sidebar-suboption'
-                    subclasBtn.textContent = subclas.nombre;
-
-                    subclasBtn.dataset.id = subclas.id;
-
-                    itemContainer.appendChild(checkbox);
-                    itemContainer.appendChild(subclasBtn);
-
-                    container.appendChild(itemContainer);
-
-                    subclasBtn.addEventListener('click', function(event){
-                        event.stopPropagation();
-                        const subclasId = this.dataset.id;
-                        activarMododibujo(subclasId);
-                    })
-                })
-            }
-        }
+        
         
         
         //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL DE SUBCATEGORIA
@@ -383,218 +283,6 @@
                 categoriaSelect.value = categoriaId;
             }
         })
-        
-        //----------SCRIPT PARA LA SIDEBAR------------------
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleSidebar");
-
-        toggleBtn.addEventListener("click", function () {
-            sidebar.classList.toggle("minimized");
-            setTimeout(() => {
-                map.invalidateSize(); // Ajusta Leaflet después del cambio
-            }, 310);
-
-            if (sidebar.classList.contains("minimized")){
-                toggleBtn.innerHTML = "&gt;"
-            } else {
-                toggleBtn.innerHTML = "&lt;"
-            }
-        });
-        //-----------------------------------------------//LOCALSTORAGE\\------------------------------------------
-        //------------------------SCRIPT PARA CARGAR LAS FIGURAS PROPIAS DEL LOCALSTORAGE-----------------
-        
-        window.editableLayers = L.featureGroup().addTo(map);
-
-        //PARA CARGAR LAS FIGURAS SEGÚN SU SUBCLASIFICACION
-        function cargarFigurasPorSubclasificacion(){
-            for (let key in localStorage){
-                if (key.startsWith("figuras_subclas_")){
-                    try {
-                        const geojson = JSON.parse(localStorage[key]);
-
-                        L.geoJSON(geojson, {
-                            onEachFeature: (feature, layer) => {
-                                layer.feature = feature;
-                                attachEditListeners(layer);
-                                editableLayers.addLayer(layer);
-                            }
-                        }).addTo(map);
-
-                        console.log(`Cargada ${key}`);
-                    } catch (err){
-                        console.error("Error cargando subclas:", key, err);
-                    }
-                }
-            }
-        }
-
-        //FUNCION PARA CARGAR LAS FIGURAS IMPORTADAS
-        function cargarCapasImportadas(){
-            if (!window.listaCapas || window.listaCapas.length === 0) {
-                return
-            }
-
-            window.listaCapas.forEach(nombreCapa => {
-                const capaDataJSON = localStorage.getItem(`capa_data_${nombreCapa}`);
-                if (!capaDataJSON) return;
-
-                try {
-                    const geojson = JSON.parse(capaDataJSON);
-                    L.geoJSON(geojson, {
-                        onEachFeature: function(feature, layer){
-                            layer.feature = feature;
-                            layer.feature.properties = feature.properties || {};
-                            layer.feature.properties.__origenCapa = nombreCapa;
-
-                            attachEditListeners(layer);
-                            window.editableLayers.addLayer(layer);
-                        }
-                    })
-                    .addTo(map);
-                    console.log(`Capa importada '${nombreCapa}' restaurada correctamente.`)
-                } catch(error) {
-                    console.error(`Error cargando capa importada ${nombreCapa}: `, error)
-                }
-            })
-        }
-        
-        //FUNCION PARA GUARDAR LOS CAMBIOS EN DISTINTAS CAPAS
-
-        function guardarCambiosCapa(layer){
-            if (!layer || !layer.feature){
-                console.error('Error al guardar cambios: La capa o sus propiedades (feature) no son válidas.', layer);
-                return;
-            }
-            const origen = layer.feature?.properties?.__origenCapa;
-            const subId = layer.feature?.properties?.__subclasificacionId;
-
-            if (origen) {
-                const figurasAGuardar = window.editableLayers.getLayers().filter(l => l.feature?.properties?.__origenCapa === origen);
-
-                if (figurasAGuardar.length > 0) {
-                    const geojsonCapa = {
-                        type: 'FeatureCollection',
-                        features: figurasAGuardar.map(l => l.toGeoJSON())
-                    };
-                    localStorage.setItem(`capa_data_${origen}`, JSON.stringify(geojsonCapa));
-                    console.log(`Capa importada '${origen}' guardada por separado en localStorage.`)
-                }
-            } 
-            else if (subId) {
-                guardarFiguraPorSubclasificacion(layer)
-                console.log(`Figura editada o movida actualizada en subclasificación ${subId}`)
-            }
-        }
-
-        function guardarTrasRemover(removedLayer){
-            if(!removedLayer || !removedLayer.feature){
-                return;
-            }
-
-            const origen = removedLayer.feature.properties.__origenCapa;
-
-            if(origen) {
-                const figurasAGuardar = window.editableLayers.getLayers().filter(l => l.feature && l.feature.properties && l.feature.properties.__origenCapa === origen)
-
-                if(figurasAGuardar.length >0) {
-                    const geojsonCapa = {
-                        type: 'FeatureCollection',
-                        features: figurasAGuardar.map(l => l.toGeoJSON())
-                    };
-
-                    localStorage.setItem(`capa_data_${origen}`, JSON.stringify(geojsonCapa));
-                    console.log(`Capa importada '${origen}' actualizada y guardada tras eliminación.`)
-                } else {
-                    localStorage.removeItem(`capa_data_${origen}`)
-                    console.log(`Capa importada '${origen}' vacía. Eliminada de localStorage.`);
-                    window.listaCapas = window.listaCapas.filter(nombre => nombre !== origen);
-                    localStorage.setItem('capas', JSON.stringify(window.listaCapas));
-
-                    if(typeof window.agregarCapaALista === 'function') {
-                        window.agregarCapaALista();
-                    }
-                }
-            } 
-            else if (removedLayer.feature.properties.__subclasificacionId) {
-                guardarFiguraPorSubclasificacion(removedLayer);
-                console.log(`Figura eliminada en subclasificación ${removedLayer.feature.properties.__subclasificacionId}`)
-            }
-        }
-        
-        //LISTENERS PARA EDITAR, MOVER Y ELIMINAR UNA FIGURA
-        function attachEditListeners(layer){
-            layer.on("pm:edit", (e) => guardarCambiosCapa(e.target));
-            layer.on("pm:dragend", (e) => guardarCambiosCapa(e.target));
-            
-
-            layer.on('click', function(e){
-                mostrarDatosOffcanvas(e.target);
-            } )
-        }
-        map.on("pm:remove", function(e){
-                console.log('pm:remove event', e);
-
-                const removedLayer = e && e.layer ? e.layer : null;
-
-                setTimeout(() => {
-                    try{
-                        if (removedLayer && window.editableLayers && window.editableLayers.hasLayer(removedLayer)){
-                            window.editableLayers.removeLayer(removedLayer);
-                            console.log('Layer forzado a ser removido de editableLayers antes de guardar.');
-                        }
-
-                        if (removedLayer) {
-                            guardarTrasRemover(removedLayer);
-                        }
-                        if (removedLayer?.feature?.properties?.id) {
-                            const figuraId = removedLayer.feature.properties.id;
-
-                            fetch(`/eliminar_figura/${figuraId}/`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRFToken': getCookie('csrftoken'),
-                                },
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP status: ${response.status}`)
-                                }
-                                return response.text();
-                            })
-                            .then(text => {
-                                if (text) {
-                                    try {
-                                        const data = JSON.parse(text);
-                                        console.log("Figura eliminada del backend. Respuesta: ", data)
-                                    } catch (e) {
-                                        console.error("Respuesta del servidor no es JSON válida: ", text, e)
-                                    }
-                                } else {
-                                    console.log("Figura eliminada del backend. Respuesta vacía.");
-                                }
-                                if (!removedLayer.feature.properties.__origenCapa) {
-                                    guardarFiguraPorSubclasificacion();
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Error al eliminar la figura en el backend:", error)
-                            })
-                        }
-                        else {
-                            console.warn('No se encontró un ID de figura en las propiedades del layer.');
-                        }
-                    } catch (err) {
-                        console.error('Error actualizando localStorage tras pm:remove:', err);
-                    }
-                }, 0)
-            });
-        window.attachEditListeners = attachEditListeners;
-
-        
-        cargarFigurasPorSubclasificacion(); //PARA CARGAR LAS FIGURAS AL REFRESCAR LA PÁGINA
-        cargarCapasImportadas();
-
-        //---------------------------------------------------------------------------------------------------------------------
 
         //PARA ENVIAR LAS CATEGORIAS Y SUBCATEGORIAS A LA BASE DE DATOS POR AJAX
         function getCookie(name) {
@@ -614,79 +302,7 @@
 
         //Para exportar ls capas
 
-        const botonExportar = document.getElementById('botonExportarCapa');
-
-        if(botonExportar) {
-            botonExportar.addEventListener('click', (e) => {
-                e.preventDefault()
-
-                const geojson = window.editableLayers.toGeoJSON()
-
-                if (!geojson || geojson.features.length === 0) {
-                    alert('No hay figuras para exportar')
-                    return
-                }
-
-                const nombreSugerido = 'capa_completa_' + new Date().toISOString().slice(0, 10);
-                const nombreArchivo = prompt("Ingresa el nombre del archivo (sin extensión .zip):", nombreSugerido);
-
-                if (!nombreArchivo) {
-                    alert('Exportación cancelada')
-                    return;
-                }
-
-                const tiposGeometria = new Set();
-
-                geojson.features.forEach(feature => {
-                    if (feature.geometry && feature.geometry.type) {
-                        tiposGeometria.add(feature.geometry.type)
-                    }
-                })
-
-                if (tiposGeometria.size > 1) {
-                    alert('Error de exportación, la capa contiene más de un tipo de geometría ('+ Array.from(tiposGeometria).join(', ')+'). El formato Shapefile solo soporta un tipo de geometría por archivo')
-                    return;
-                }
-
-                const capaAExportar = geojson
-
-                fetch('/exportar_SHP/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        geojson: capaAExportar,
-                        filename: nombreArchivo
-                    })
-                })
-                .then(response => {
-                    if (response.ok) {
-                        return response.blob()
-                    } else {
-                        return response.json().then(errorData => {
-                            throw new Error(errorData.error || 'Error desconocido en la exportación')
-                        })
-                    }
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a')
-                    a.style.display = 'none'
-                    a.href = url
-                    a.download = `${nombreArchivo}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url)
-                    alert(`Exportación completada. Descargando ${nombreArchivo}.zip`)
-                })
-                .catch(error => {
-                    console.error('Error durante la exportación: ', error);
-                    alert(`Fallo en la exportación: ${error.message}`)
-                })
-            })
-        }
+        
         
 
         //--------------------------------------//FORMULARIOS\\----------------------------------------------------------------
@@ -883,452 +499,9 @@
                 e.preventDefault();
                 const formData = new FormData(form);
                 const atributos = Object.fromEntries(formData.entries());
-                guardarFiguraPorSubclasificacion(atributos);
                 modal.hide();
             }
-        }
-        //Para asignar datos a la figura creada
-        function asignarDatosFigura(layer){
-            if (!window.subclasSeleccionada){
-                alert('Seleccione una subclasificación antes de crear una figura');
-                layer.remove();
-                return;
-            }
-
-            const sub = window.subclasSeleccionada;
-            const offcanvasElement = document.getElementById('seccionTablas');
-            const offcanvasBody = document.getElementById('cuerpoTablas');
-
-            offcanvasBody.innerHTML = '';
-
-            if (sub.campos && sub.campos.length > 0) {
-                const form = document.createElement('form');
-                form.id = 'atributosFiguraForm';
-
-                sub.campos.forEach(campo => {
-                    const group = document.createElement('div');
-                    group.className = 'mb-3';
-
-                    const input = document.createElement('input');
-                    input.className = 'form-control';
-                    input.name = campo.nombre;
-                    input.type = campo.tipo === 'number' ? 'number' : 'text';
-                    input.placeholder = `Ingrese ${campo.nombre.toLowerCase()}`;
-
-                    group.appendChild(input);
-                    form.appendChild(group);
-                });
-
-                const btnGuardar = document.createElement('button');
-                btnGuardar.type = 'submit';
-                btnGuardar.textContent = 'Guardar figura';
-                btnGuardar.className = 'btn btn-primary';
-
-                btnGuardar.addEventListener('click', (event) => {
-                    event.preventDefault(); 
-
-                    const datos = {};
-                    form.querySelectorAll('input').forEach(input => {
-                        datos[input.name] = input.value;
-                    });
-
-                    console.log('Layer recibido:', layer);
-                    console.log('Tiene toGeoJSON?:', typeof layer.toGeoJSON);
-
-                    const figuraData = {
-                        subclasificacion_id: sub.id,
-                        atributos: datos,
-                        geometria: layer.toGeoJSON().geometry,
-                    };
-
-                    console.log('Figura lista para guardar: ', figuraData);
-
-                    //Estas dos líneas permiten actualizar la capa para que la figura muestre los atributos asignados
-                    layer.feature = layer.feature || {type: 'Feature', properties: {}};
-                    layer.feature.properties = Object.assign({}, layer.feature.properties, datos);
-                    layer.feature.properties.__subclasificacionId = window.subclasSeleccionada.id;
-                    layer.feature.properties.__subclasificacionNombre = window.subclasSeleccionada.nombre;
-
-
-                    fetch('/guardar_figura/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrftoken,
-                        },
-                        body: JSON.stringify(figuraData),
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        console.log('Guardado: ', data);
-                        if (data.success) {
-                            if (data.id){
-                                layer.feature.properties.id = data.id;
-                            }
-                            guardarFiguraPorSubclasificacion(layer);
-                            alert('Figura guardada correctamente');
-                            const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-                            offcanvas?.hide(); 
-                        } else {
-                            console.error('Error guardando la figura: ', data.error)
-                        }
-                    })
-                    .catch(err => console.error('Error guardando figura: ', err));
-                });
-
-                form.appendChild(btnGuardar);
-                offcanvasBody.appendChild(form);
-
-                let offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-                if (!offcanvas){
-                    offcanvas = new bootstrap.Offcanvas(offcanvasElement);
-                }
-                offcanvas.show();
-
-            } else {
-                const offcanvas = new bootstrap.Offcanvas(offcanvasElement);
-                offcanvas.show();
-            }
-        }
-
-        function guardarFiguraPorSubclasificacion(layer) {
-            if (!layer || !layer.feature || !layer.feature.properties) {
-                console.error("Figura inválida al guardar por subclasificación");
-                return;
-            }
-
-            const subId = layer.feature.properties.__subclasificacionId;
-
-            if(!subId){
-                console.warn("La figura no tiene subclasificación asignada.");
-                return;
-            }
-
-            //Se filtra a todas las figuras que pertenecen a esta subclas
-            const figuras = window.editableLayers.getLayers().filter(l => {
-                return l.feature && l.feature.properties && l.feature.properties.__subclasificacionId == subId;
-            })
-
-            const geojson = {
-                type: "FeatureCollection",
-                features: figuras.map(l => l.toGeoJSON())
-            }
-
-            localStorage.setItem(`figuras_subclas_${subId}`, JSON.stringify(geojson))
-
-            console.log(`Guardada subclasificación ${subId} en localStorage`)
-        }
-
-        
-
-        //Funcion que permite ver la tabla de datos en offcanvas al hacer click en una figura de una capa cargada
-        function mostrarDatosOffcanvas(layer){
-            if (!layer ||!layer.feature) return;
-            const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
-            const offcanvasBody = document.getElementById('cuerpoTablas');
-            const offcanvasElement = document.getElementById('seccionTablas')
-            
-            capaEnVista = layer;
-
-            let tablaHtml = '<table class= "table table-striped table-sm">';
-            tablaHtml += '<thead><tr><th>Atributo</th><th>Valor</th></tr></thead>';
-            tablaHtml += '<tbody>';
-
-            const propKeys = Object.keys(properties);
-
-            if (propKeys.length === 0) {
-                tablaHtml += `<tr><td colspan="2">No hay atributos definidos para esta figura.</td></tr>`;
-            } else {
-                for (const key of propKeys){
-                    if (camposOcultos.includes(key)) continue;
-                    tablaHtml += `<tr><td><strong>${key}</strong></td><td>${properties[key]}</td></tr>`;
-                }
-            }
-            tablaHtml += '<tbody></table>'
-            offcanvasBody.innerHTML = tablaHtml;
-
-            if (offcanvasElement && typeof bootstrap !== 'undefined') {
-                let bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement)
-                if (!bsOffcanvas){
-                    bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
-                }
-                bsOffcanvas.show();
-            } else if (offcanvasElement) {
-                console.error("Error: La librería de Bootstrap no está cargada")
-            }
-
-        }
-        window.mostrarDatosOffcanvas = mostrarDatosOffcanvas;
-
-        document.addEventListener('click', function (e){
-            if(e.target && e.target.id === 'btnEditarDatos' && capaEnVista) {
-                e.preventDefault();
-                generarFormularioEditable(capaEnVista)
-            }
-        })
-
-        function generarFormularioEditable(layer){
-            window.capaActualmenteEditada = layer;
-            const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
-            const offcanvasBody = document.getElementById('cuerpoTablas');
-
-            offcanvasBody.innerHTML = '';
-
-            let formHtml = '<form id="atributosFiguraForm">';
-            formHtml += '<table class= "table table-striped table-sm">';
-            formHtml += '<thead><tr><th>Atributo</th><th>Valor</th></tr></thead>';
-            formHtml += '<tbody>';
-
-            const propKeys = Object.keys(properties);
-
-            if (propKeys.length === 0) {
-                formHtml = `<tr><td><strong>Nuevo Atributo</strong></td><td><input type="text" class="form-control form-control-sm" name="nuevo_atributo_1" value=""></td></tr>`;
-            } else {
-                for (const key of propKeys) {
-                    if (camposOcultos.includes(key)) continue;
-                    const safeValue = (properties[key] === null || properties[key] === undefined) ? '' : properties[key];
-                    formHtml += `<tr><td><strong>${key}</strong></td><td><input type="text" class="form-control form-control-sm" name="${key}" value="${safeValue}"></td></tr>`;
-                }
-            }
-
-            formHtml += '</tbody></table>'
-            formHtml += '<button type="submit" class="btn btn-success btn-sm mt-3">Guardar cambios</button>';
-            formHtml += '</form>';
-
-            offcanvasBody.innerHTML = formHtml
-
-            document.getElementById('atributosFiguraForm').addEventListener('submit', function(e){
-                e.preventDefault();
-                guardarAtributosEditados(layer, this);
-            })
-        }
-        
-        function guardarAtributosEditados(layer, formElement){
-            const formData = new FormData(formElement);
-            const newProperties = {};
-            const oldProps = layer.feature.properties
-
-            for (const [key, value] of formData.entries()) {
-                if (!window.camposOcultos.includes(key)) {
-                    newProperties[key] = value;
-                }
-            }
-
-            for (const key in oldProps) {
-                if (window.camposOcultos.includes(key)) {
-                    newProperties[key] = oldProps[key]
-                }
-            }
-            
-            if (!layer.feature) {
-                layer.feature = {type: 'Feature', properties: {}};
-            }
-            layer.feature.properties = newProperties;
-
-            if(oldProps.__subclasificacionId) {
-                guardarFiguraPorSubclasificacion(layer)
-            } 
-            else if (oldProps.__origenCapa){
-                guardarCambiosCapa(layer);
-            }
-
-            else {
-                guardarFiguraPorSubclasificacion();
-            }
-            
-            alert('Atributos guardados')
-            mostrarDatosOffcanvas(layer);
-        }
-
-        //PERMITE EL MODO EDICIÓN SÓLO CON LA HERRAMIENTA ASOCIADA A LA SUBCLASE
-        async function activarMododibujo(subclasId) {
-        try {
-            const response = await fetch(`/obtener_config_subclasificacion/${subclasId}/`);
-            const data = await response.json();
-
-            console.log("Respuesta subclasificación:", data);
-
-            if (!data || data.success === false) {
-                alert('Error cargando subclasificación');
-                return;
-            }
-
-            window.subclasSeleccionada = data;
-
-            map.pm.removeControls();
-            map.pm.Toolbar.changeControlOrder([]);
-            map.off('pm:create');
-
-            const barraHerramientas = {
-                position: 'bottomleft',
-                drawMarker: false,
-                drawPolyline: false,
-                drawPolygon: false,
-                drawCircle: false,
-                drawCircleMarker: false,
-                drawRectangle: false,
-                rotateMode: false,
-                editMode: true,
-                dragMode: true,
-                removalMode: true,
-                cutPolygon: false,
-                drawText: false,
-            };
-
-            switch (data.tipo_geometria) {
-                case 'Point':
-                    barraHerramientas.drawMarker = true;
-                    break;
-                case 'LineString':
-                    barraHerramientas.drawPolyline = true;
-                    break;
-                case 'Polygon':
-                    barraHerramientas.drawPolygon = true;
-                    break;
-            }
-
-            if (data.tipo_geometria === 'Point') map.pm.enableDraw('Marker');
-            if (data.tipo_geometria === 'LineString') map.pm.enableDraw('Line');
-            if (data.tipo_geometria === 'Polygon') map.pm.enableDraw('Polygon');
-
-            map.pm.addControls(barraHerramientas);
-
-            // CREAR UNA NUEVA FIGURA
-            map.on("pm:create", async (e) => {
-                map.pm.disableDraw();
-                const layer = e.layer;
-                editableLayers.addLayer(layer);
-                layer.feature = layer.feature || { type: "Feature", properties: {} };
-                layer.feature.properties.__subclasificacionId = window.subclasSeleccionada.id;
-                layer.feature.properties.__subclasificacionNombre = window.subclasSeleccionada.nombre;
-
-                try {
-                    const geojson = layer.toGeoJSON().geometry;
-                    window.geometriaActual = geojson;
-
-                    if (!window.subclasSeleccionada) {
-                        alert("Selecciona una subclasificación antes de dibujar");
-                        layer.remove();
-                        return;
-                    }
-                } catch (error) {
-                    console.error("Error al guardar figura:", error);
-                    alert("Ocurrió un error al guardar la figura");
-                }
-
-                attachEditListeners(layer);
-                guardarFiguraPorSubclasificacion(layer);
-                asignarDatosFigura(layer);
-            });
-
-        } catch (err) {
-            console.error("Error activando las herramientas de dibujo", err);
-        }
     }
-    
-    window.alternarVisibilidadCapa = function(nombreCapa, elementoLista) {
-        const esVisible = window.capasVisibles[nombreCapa] !== false;
-
-        window.editableLayers.eachLayer(function(layer) {
-            const origen = layer.feature && layer.feature.properties && layer.feature.properties.__origenCapa;
-
-            if (origen === nombreCapa) {
-                if (esVisible) {
-                    window.map.removeLayer(layer);
-                } else {
-                    layer.addTo(window.map);
-                }
-            }
-        })
-
-        window.capasVisibles[nombreCapa] = !esVisible
-
-        if (elementoLista) {
-            if (!esVisible) {
-                elementoLista.style.opacity = '1.0';
-            } else {
-                elementoLista.style.opacity = '0.5'; 
-            }
-        }
-        console.log(`Visibilidad de capa ${nombreCapa} alternada a ${!esVisible ? 'VISIBLE' : 'OCULTA'}.`)
-    }
-
-    function eliminarCapa(){
-        if (!window.listaCapas || window.listaCapas.length === 0) {
-                return
-            }
-    }
-
-    document.addEventListener('change', function(e) {
-        const checkbox = e.target;
-        if(!checkbox.classList.contains('form-check-input')) return;
-
-        const tipo = checkbox.dataset.tipo;
-        const id = checkbox.dataset.id;
-        const visible = checkbox.checked;
-
-        if (!tipo || !id) return;
-
-        function alternarVisibilidadPorJerarquia(tipo, id, visible){
-            if (tipo === 'categoria') {
-                fetch(`/obtener_contenido_categoria/${id}/`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.subcategorias) {
-                            data.subcategorias.forEach(sub => {
-                                alternarVisibilidadPorJerarquia('subcategoria', sub.id, visible)
-                            })
-                        }
-
-                        if (data.subclasificaciones_cat) {
-                            data.subclasificaciones_cat.forEach(subclas => {
-                                alternarVisibilidadPorJerarquia('subclasificacion', subclas.id, visible)
-                            })
-                        }
-                    })
-                    .catch(err => console.error('Error fetch de categoria: ', err))
-                return;
-            }
-
-            else if ( tipo === 'subcategoria') {
-                fetch(`/obtener_contenido_subcategoria/${id}/`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.items) {
-                            data.items.forEach(subclas => {
-                                alternarVisibilidadPorJerarquia('subclasificacion', subclas.id, visible);
-                            })
-                        }
-                    })
-                    .catch(err => console.error("Error fetch subcategoria: ", err))
-            }
-
-            else if (tipo === 'subclasificacion') {
-                const key = `figuras_subclas_${id}`
-                const geojsonData = localStorage.getItem(key);
-                if (!geojsonData) return;
-
-                const figuras = JSON.parse(geojsonData);
-
-                window.editableLayers.eachLayer(function(layer) {
-                    if (layer.feature?.properties?.__subclasificacionId == id) {
-                        if (visible) {
-                            if (!map.hasLayer(layer)) layer.addTo(map);
-                        } else {
-                            if (map.hasLayer(layer)) map.removeLayer(layer);
-                        }
-                    }
-                })
-
-                return;
-            }
-        }
-
-        alternarVisibilidadPorJerarquia(tipo, id, visible)
-    })
-
-
-
 });
 </script>
 {% endblock %}

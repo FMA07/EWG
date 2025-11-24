@@ -164,6 +164,20 @@ body, html{
 
 /*Personalización sidebar*/
 
+.btn-eliminar-capa-imp{
+    background: url("/static/icons/bin.png");
+    background-size: 20px;
+    border: none;
+    height: 20px;
+    width: 20px;
+    margin-left: 5px;
+}
+
+.btn-eliminar-capa-imp:hover{
+    background: url("/static/icons/recycle-bin.png");
+    background-size: 20px;
+}
+
 .contenedor-categorias{
     display: flex;
     height: 50px;

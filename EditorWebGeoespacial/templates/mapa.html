@@ -45,7 +45,7 @@
         <button id="toggleSidebar" class="btn btn-sm btn-light">
             &lt;
         </button>
-        <div id="sidebar-content" style="margin-top: 0px;"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC  TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
+        <div id="sidebar-content" style="margin-top: -50px;"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC  TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
             <div id="sidebar-body">
                 <ul style="list-style-type: none; margin-left: -20px;">
                     {% for categoria in categorias %}
@@ -90,249 +90,35 @@
         crossorigin=""></script>
 
 <!--ESTE SCRIPT CARGA LOS DIFERENTES TILESETS Y DESPUÉS CARGA EL MAPA, INICIANDO CON EL DE LAS CALLES-->
-<script>
-    const calles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    });
-    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles © Esri'
-    });
-    const relieve = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenTopoMap contributors'
+<script type="module">
+    import {
+        inicializacionMapa,
+        mantenerVista,
+        tilesetsMapa
+    } from "{% static 'js/funcionalidadMapa.js' %}";
+
+    import {
+        toggleSidebar,
+        inicializadorSidebar,
+        fetchContenidoCategoria,
+        fetchContenidoSubcategoria,
+        mostrarSubclasificacion,
+    } from "{% static 'js/funcionalidadSidebar.js' %}"
+
+    document.addEventListener('DOMContentLoaded', function(){
+
+        const {map, calles, satelite, relieve} = inicializacionMapa()
+
+        window.map = map
+
+        mantenerVista(map)
+
+        tilesetsMapa(map, calles, satelite, relieve)
+
+        toggleSidebar()
+
+        inicializadorSidebar()
     })
 
-    const defaultLat = -33.03853;
-    const defaultLng = -71.60666;
-    const defaultZoom = 14;
-    var southWest = L.latLng(-33.367279, -71.78279122251949);
-    var northEast = L.latLng(-32.979154, -71.331662);
-    var limitesMapa = L.latLngBounds(southWest, northEast);
-
-    let latGuardada = localStorage.getItem('mapCenterLat');
-    let lngGuardada = localStorage.getItem('mapCenterLng');
-    let zoomGuardado = localStorage.getItem('mapZoom');
-
-    const latInicial = latGuardada ? parseFloat(latGuardada) : defaultLat;
-    const lngInicial = lngGuardada ? parseFloat(lngGuardada) : defaultLng;
-    const zoomInicial = zoomGuardado ? parseInt(zoomGuardado) : defaultZoom;
-
-    var map = L.map('map', {pmIgnore: false}).setView([latInicial, lngInicial], zoomInicial);
-    calles.addTo(map);
-    map.setMaxBounds(limitesMapa);
-    
-
-    //FUNCION PARA GUARDAR LA VISTA ACTUAL EN LOCALSTORGAGE
-    function guardarVista(){
-        localStorage.setItem('mapCenterLat', map.getCenter().lat);
-        localStorage.setItem('mapCenterLng', map.getCenter().lng);
-        localStorage.setItem('mapZoom', map.getZoom());
-    }
-
-    map.on('moveend', guardarVista);
-</script>
-<!--ESTE SCRIPT PERMITE SELECCIONAR EL TILESET DEL MAPA-->
-<script>
-    let currentLayer = calles;
-        
-    const edicionesLayer = L.layerGroup().addTo(map);
-        
-    function cambiarMapa(layer){
-        if (currentLayer) map.removeLayer(currentLayer);
-        layer.addTo(map);
-        currentLayer = layer;
-    }
-    //listeners para las distintas opciones del menú de mapas
-    document.getElementById('mapaSatelital').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(satelite);
-    });
-    document.getElementById('mapaCalles').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(calles);
-    });
-    document.getElementById('mapaRelieve').addEventListener('click', function(e){
-        e.preventDefault();
-        cambiarMapa(relieve);
-    });
-
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
-
-        botonCategorias.forEach(function(boton){
-            boton.addEventListener("click", function(e){
-                e.preventDefault();
-
-                var listaCategorias = this.closest('.lista-categorias');
-                var listaSubcategoriasUl = listaCategorias ? listaCategorias.querySelector('.lista-subcategorias') : null;
-                const categoriaId = this.dataset.id;
-
-                if (listaSubcategoriasUl) {
-
-                    const seAbre = listaSubcategoriasUl.style.display === 'none' || !listaSubcategoriasUl.style.display;
-
-                    if (seAbre) {
-                        document.querySelectorAll('.lista-subcategorias').forEach(ul => {
-                            if (ul !== listaSubcategoriasUl) {
-                                ul.style.display = 'none';
-                            }
-                        });
-                        
-                        listaSubcategoriasUl.style.display = 'block';
-                        fetchContenidoCategoria(categoriaId, listaCategorias);
-                    } else {
-                        listaSubcategoriasUl.style.display = 'none';
-                        
-                    }
-                }
-            })
-        });
-
-        // CODIGO PARA CARGAR EL CONTENIDO DE LAS CATEGORIAS Y SUBCATEGORIAS
-        function fetchContenidoCategoria(categoriaId, listaCategorias) {
-            const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
-            const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
-
-            subcatListContainer.innerHTML = '<li>Cargando...</li>';
-            subclasListContainer.innerHTML = '';
-
-            fetch(`/obtener_contenido_categoria/${categoriaId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    subcatListContainer.innerHTML = '';
-
-                    if (!data) {
-                        subcatListContainer.innerHTML = `<li>Error cargando contenido: ${data.error}`;
-                        return
-                    }
-
-                    if (data.subcategorias) {
-                        data.subcategorias.forEach(sub => {
-                            const li = document.createElement('li');
-                            const itemContainer = document.createElement('div');
-                            itemContainer.className = 'contenedor-subcategorias';
-
-                            const checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.checked = true;
-                            checkbox.className = 'form-check-input subitem-checkbox';
-                            checkbox.dataset.id = sub.id;
-                            checkbox.dataset.tipo = 'subcategoria';
-
-                            const btn = document.createElement('button');
-                            btn.className = 'sidebar-suboption';
-                            btn.dataset.id = sub.id;
-                            btn.textContent = sub.nombre;
-
-                            btn.addEventListener('click', function(event){
-                                event.stopPropagation();
-                                fetchContenidoSubcategoria(sub.id, this); 
-                            });
-
-                            itemContainer.appendChild(checkbox);
-                            itemContainer.appendChild(btn)
-
-                            li.appendChild(itemContainer);
-                            subcatListContainer.appendChild(li);
-                        });
-                    }
-
-                    if (data.subclasificaciones_cat) {
-                        mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error cargando categoría: ', err);
-                    subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
-                });
-        }
-
-        //Funciones auxiliares para el fetch de subcategorias
-        function fetchContenidoSubcategoria(subId, clickedButton){
-            const subcatLi = clickedButton.closest('li');
-            const subclasId = `subclas-for-sub-${subId}`;
-            const elementoSubclas = document.getElementById(subclasId);
-
-            if (elementoSubclas) {
-                elementoSubclas.remove()
-                return; 
-            }
-
-            const subclasLi = document.createElement('li');
-            subclasLi.id = `subclas-for-sub-${subId}`;
-            subclasLi.className = 'subclas-injected-li'
-            subclasLi.innerHTML ='<p style="text-align: center;">Cargando figuras...</p>';
-
-            subcatLi.after(subclasLi);
-
-            fetch(`/obtener_contenido_subcategoria/${subId}/`)
-                .then(response => response.json())
-                .then(data =>{
-                    mostrarSubclasificacion(data.items, subclasLi, subId);
-                })
-                .catch(err => {
-                    console.error('Error cargando las subclasificaciones: ', err),
-                    subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
-                })
-        }
-
-        function mostrarSubclasificacion(items, container, subId){
-            container.innerHTML = '';
-            
-            if (items) {
-
-                items.forEach(subclas => {
-                    const itemContainer = document.createElement('div');
-                    itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
-
-                    const checkbox = document.createElement('input');
-                    checkbox.className = 'form-check-input subitem-checkbox';
-                    checkbox.type = 'checkbox';
-                    checkbox.checked = true;
-                    checkbox.dataset.id = subclas.id;
-                    checkbox.dataset.tipo = 'subclasificacion'
-
-                    const subclasBtn = document.createElement('button');
-                    subclasBtn.className = 'sidebar-suboption'
-                    subclasBtn.textContent = subclas.nombre;
-
-                    subclasBtn.dataset.id = subclas.id;
-
-                    itemContainer.appendChild(checkbox);
-                    itemContainer.appendChild(subclasBtn);
-
-                    container.appendChild(itemContainer);
-
-                    subclasBtn.addEventListener('click', function(event){
-                        event.stopPropagation();
-                        const subclasId = this.dataset.id;
-                    })
-                })
-            }
-        }
-
-        //----------SCRIPT PARA LA SIDEBAR------------------
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleSidebar");
-
-        toggleBtn.addEventListener("click", function () {
-            sidebar.classList.toggle("minimized");
-            setTimeout(() => {
-                map.invalidateSize(); // Ajusta Leaflet después del cambio
-            }, 310);
-
-            if (sidebar.classList.contains("minimized")){
-                toggleBtn.innerHTML = "&gt;"
-            } else {
-                toggleBtn.innerHTML = "&lt;"
-            }
-        });
-        
-        
-    })
 </script>
 </html>
