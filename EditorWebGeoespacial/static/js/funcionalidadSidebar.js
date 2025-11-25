@@ -3,6 +3,7 @@ import {
     guardarEstadoVisibilidad,
     alternarVisibilidadFigUsuario,
     ultimoEstadoVisibilidad,
+    actualizarVisibilidadFigurasUsuario,
 } from "./visibilidad.js"
 
 /*
@@ -30,6 +31,9 @@ export function toggleSidebar() {
 export async function inicializadorSidebar(){
 
     restaurarEstadoVisibilidad(); 
+    
+
+    const ultimoEstado = JSON.parse(localStorage.getItem("VisibilidadFiguras") || "{}");;
 
     const cargarContenidoPromises = []
  
@@ -50,6 +54,12 @@ export async function inicializadorSidebar(){
                     if (data.subcategorias) {
                         data.subcategorias.forEach(sub => {
                             crearItemSubcategoria(sub, subcatListContainer);
+
+                            const key = `subcategoria_${sub.id}`
+                            if (ultimoEstado[key] === true) {
+                                // Si estaba activa → cargar automáticamente sus subclasificaciones
+                                fetchContenidoSubcategoria(sub.id, null);
+                            }
                         });
                     }
                     //Crear dinámicamente las subclasificaciones
@@ -93,14 +103,14 @@ export async function inicializadorSidebar(){
                 const seAbre = listaSubcategoriasUl.style.display === 'none' || !listaSubcategoriasUl.style.display;
 
                 if (seAbre) {
-                    document.querySelectorAll('.lista-subcategorias').forEach(ul => {
-                        if (ul !== listaSubcategoriasUl) {
-                            ul.style.display = 'none';
-                        }
-                    });
-                    
-                    listaSubcategoriasUl.style.display = 'block';
-                    fetchContenidoCategoria(categoriaId, listaCategorias); 
+                    listaSubcategoriasUl.style.display = 'block'
+
+                    if (listaSubcategoriasUl.dataset.cargado !== "true") {
+                        fetchContenidoCategoria(categoriaId, listaCategorias)
+                        .then(() => {
+                            listaSubcategoriasUl.dataset.cargado = "true"
+                        })
+                    }
                 } else {
                     listaSubcategoriasUl.style.display = 'none';
                     
@@ -108,6 +118,7 @@ export async function inicializadorSidebar(){
             }
         })
     });
+    window.visibilidadListasListas = true;
 }
 
 // NUEVA FUNCIÓN AUXILIAR
@@ -156,7 +167,7 @@ export function fetchContenidoCategoria(categoriaId, listaCategorias) {
     subcatListContainer.innerHTML = '<li>Cargando...</li>';
     subclasListContainer.innerHTML = '';
 
-    fetch(`/obtener_contenido_categoria/${categoriaId}/`)
+    return fetch(`/obtener_contenido_categoria/${categoriaId}/`)
         .then(response => response.json())
         .then(data => {
             subcatListContainer.innerHTML = '';
@@ -175,20 +186,31 @@ export function fetchContenidoCategoria(categoriaId, listaCategorias) {
             if (data.subclasificaciones_cat) {
                 mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
             }
+            return true
         })
         .catch(err => {
             console.error('Error cargando categoría: ', err);
             subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
+            return false
         })
-        
-        setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
 }
 
 //Funciones auxiliares para el fetch de subcategorias
 export function fetchContenidoSubcategoria(subId, clickedButton){
-    const subcatLi = clickedButton.closest('li');
+    let subcatLi
     const subclasId = `subclas-for-sub-${subId}`;
     const elementoSubclas = document.getElementById(subclasId);
+
+    if (clickedButton) {
+        subcatLi = clickedButton.closest('li')
+    } else {
+        subcatLi = document.querySelector(`.subcat-checkbox[data-id='${subId}']`)?.closest('li')
+    }
+
+    if (!subcatLi) {
+        console.warn("No se encontró el contenedor <li> de la subcategoría", subId)
+        return
+    }
 
     if (elementoSubclas) {
         elementoSubclas.remove()
@@ -212,7 +234,7 @@ export function fetchContenidoSubcategoria(subId, clickedButton){
             subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
         })
         
-        setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
+        setTimeout(() => actualizarVisibilidadFigurasUsuario(), 10)
 }
 
 export function mostrarSubclasificacion(items, container){
@@ -223,6 +245,7 @@ export function mostrarSubclasificacion(items, container){
         items.forEach(subclas => {
             const itemContainer = document.createElement('div');
             itemContainer.className = 'contenedor-subcategorias item-subclasificacion'
+            const ultimoEstadoVisibilidad = JSON.parse(localStorage.getItem("VisibilidadFiguras") || "{}");
 
             const checkbox = document.createElement('input');
             checkbox.className = 'form-check-input subitem-checkbox subclas-checkbox';
@@ -237,6 +260,8 @@ export function mostrarSubclasificacion(items, container){
             const key = `subclasificacion_${subclas.id}`;
             if (key in ultimoEstadoVisibilidad) {
                 checkbox.checked = ultimoEstadoVisibilidad[key];
+            } else {
+                checkbox.checked = true
             }
 
             const subclasBtn = document.createElement('button');
@@ -260,5 +285,9 @@ export function mostrarSubclasificacion(items, container){
             })
         })
     }
-    setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
+    setTimeout(() => {
+        if (typeof actualizarVisibilidadFigurasUsuario === 'function') {
+            actualizarVisibilidadFigurasUsuario()
+        }
+    }, 150)
 }

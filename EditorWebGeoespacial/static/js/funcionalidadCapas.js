@@ -629,6 +629,4 @@ export function dibujarFigurasUsuario(features) {
     }).addTo(window.map);
 
     console.log("Figuras de usuario cargadas")
-
-    window.visibilidadListaListas = true
 }

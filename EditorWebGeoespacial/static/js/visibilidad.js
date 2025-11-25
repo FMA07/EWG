@@ -133,11 +133,19 @@ export function actualizarVisibilidadFigurasUsuario() {
 
         // ---- REGLA 2: Subcategoría si existe ----
         if (!isNaN(subcatId) && subcatId > 0) {
+            const cbSubcat = document.querySelector(`.subcat-checkbox[data-id='${subcatId}']`)
+
+            if (!cbSubcat) return
+
             if (!activasSubcat.has(subcatId)) visible = false;
         }
 
         // ---- REGLA 3: Subclasificación obligatoria ----
-        if (!activasSubclas.has(subclasId)) visible = false;
+        
+
+        if (checkboxSubclas) {
+            if (!activasSubclas.has(subclasId)) visible = false;
+        } 
 
         // ---- APLICACIÓN ----
         if (visible) {
