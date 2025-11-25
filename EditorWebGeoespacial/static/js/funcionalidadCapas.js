@@ -134,7 +134,7 @@ export function cargarCapas(map) {
 
             if (!data.capas) {
                 console.warn('No hay capas importadas')
-                return;
+                return resolve();
             }
 
             const listaCapasImportadas = document.getElementById('listaCapasImportadas');
@@ -178,8 +178,8 @@ export function cargarCapas(map) {
                 }).addTo(map);
 
                 console.log("Capa dibujada desde BD: ", capa.nombre)
-                resolve()
             })
+            resolve()
         } catch (err) {
             console.error("Error cargando capas: ", err)
             resolve()
@@ -392,9 +392,9 @@ export function crearFigura() { //Llamada por activarModoDibujo()
             }
         }
         layer.feature.properties.tipo = "usuario";
-        layer.feature.properties.subclasificacion_id = sub.id;
-        layer.feature.properties.subcategoria_id = sub.subcategoria_id;
-        layer.feature.properties.categoria_id = sub.categoria_id;
+        layer.feature.properties.subclasificacion_id = parseInt(sub.id);
+        layer.feature.properties.subcategoria_id = sub.subcategoria_id ? parseInt(sub.subcategoria_id) : null;
+        layer.feature.properties.categoria_id = parseInt(sub.categoria_id);
         try {
             layer.toGeoJSON()
         } catch (error) {
@@ -613,6 +613,10 @@ export function dibujarFigurasUsuario(features) {
             layer.feature = feature
             layer.feature.properties = layer.feature.properties || {}
             layer.feature.properties.id = feature.feature_id
+            layer.feature.properties.tipo = "usuario"
+            layer.feature.properties.categoria_id = feature.properties.categoria_id
+            layer.feature.properties.subcategoria_id = feature.properties.subcategoria_id
+            layer.feature.properties.subclasificacion_id = feature.properties.subclasificacion_id
 
             window.editableLayers.addLayer(layer)
             attachEditListeners(layer)
@@ -624,114 +628,4 @@ export function dibujarFigurasUsuario(features) {
     }).addTo(window.map);
 
     console.log("Figuras de usuario cargadas")
-
-    if (typeof window.actualizarVisibilidadFigurasUsuario === "function") {
-        window.actualizarVisibilidadFigurasUsuario();
-    }
 }
-
-export function alternarVisibilidad(e) {
-    const target = e?.target;
-
-    if (!target) return;
-
-    const tipo = target.dataset.tipo;
-    const id = target.dataset.id;
-    const checked = target.checked;
-
-    // SOLO PROPAGAR SI SE TOCÓ UNA CATEGORÍA O SUBCATEGORÍA
-    if (tipo === "categoria") {
-
-        // Subcategorías
-        document.querySelectorAll(`.subcat-checkbox[data-categoria='${id}']`)
-            .forEach(s => s.checked = checked);
-
-        // Subclasificaciones directas
-        document.querySelectorAll(`.subclas-checkbox[data-categoria='${id}']`)
-            .forEach(s => s.checked = checked);
-
-    } else if (tipo === "subcategoria") {
-
-        // Subclasificaciones dentro de esa subcategoría
-         document.querySelectorAll(`.subclas-checkbox[data-subcategoria='${id}']`)
-        .forEach(s => {
-            s.checked = checked;
-            s.dispatchEvent(new Event("change"));
-        });
-    }
-
-    // NUNCA propagar cuando se clickea una SUBCLASIFICACIÓN
-
-    actualizarVisibilidadFigurasUsuario();
-    window.guardarEstadoVisibilidad()
-}
-
-export function actualizarVisibilidadFigurasUsuario() {
-
-    const activasCat = new Set();
-    const activasSubcat = new Set();
-    const activasSubclas = new Set();
-
-    // Leer todos los checkboxes marcados
-    document.querySelectorAll(".categoria-checkbox:checked")
-        .forEach(ch => activasCat.add(parseInt(ch.dataset.id)));
-
-    document.querySelectorAll(".subcat-checkbox:checked")
-        .forEach(ch => activasSubcat.add(parseInt(ch.dataset.id)));
-
-    document.querySelectorAll(".subclas-checkbox:checked")
-        .forEach(ch => activasSubclas.add(parseInt(ch.dataset.id)));
-
-    // Recorrer solo figuras del usuario
-    window.editableLayers.eachLayer(layer => {
-
-        if (!layer.feature?.properties) return;
-        if (layer.feature.properties.tipo !== "usuario") return;
-
-        const p = layer.feature.properties;
-
-        const catId = p.categoria_id;
-        const subclasId = p.subclasificacion_id;
-
-        // --- NORMALIZAR SUBCATEGORÍA ---
-        let subcatId = p.subcategoria_id;
-        if (subcatId === null || 
-            subcatId === undefined ||
-            subcatId === "null" || 
-            subcatId === "undefined" ||
-            subcatId === "") 
-        {
-            subcatId = null;
-        } else {
-            subcatId = parseInt(subcatId);
-        }
-
-        ///Reglas para la visibilidad
-        let visible = true;
-
-        // 1. Debe estar activa su categoría
-        if (!activasCat.has(catId)) {
-            visible = false;
-        }
-
-        // 2. Si tiene subcategoría, depende de ella
-        if (subcatId !== null && !activasSubcat.has(subcatId)) {
-            visible = false;
-        }
-
-        // 3. Depende SIEMPRE de su propia subclasificación
-        if (!activasSubclas.has(subclasId)) {
-            visible = false;
-        }
-
-        //Aplicar visibilidad
-        if (visible) {
-            if (!window.map.hasLayer(layer)) layer.addTo(window.map);
-        } else {
-            if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
-        }
-
-    });
-}
-
-

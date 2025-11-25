@@ -1,6 +1,13 @@
+import {
+    restaurarEstadoVisibilidad,
+    guardarEstadoVisibilidad,
+    alternarVisibilidadFigUsuario,
+} from "./visibilidad.js"
+
+/*
 window.restaurarEstadoVisibilidad = restaurarEstadoVisibilidad;
 window.guardarEstadoVisibilidad = guardarEstadoVisibilidad;
-
+*/
 export function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggleSidebar");
@@ -19,7 +26,64 @@ export function toggleSidebar() {
     });
 }
 
-export function inicializadorSidebar(){
+export async function inicializadorSidebar(){
+    
+    // PASO 1: Restaurar el estado de los checkboxes de las CATEGORÍAS que ya están en el HTML.
+    // Esto es necesario para saber qué categorías deben tener su contenido cargado.
+    restaurarEstadoVisibilidad(); 
+
+    const cargarContenidoPromises = []
+    // PASO 2: Iterar sobre las categorías ya dibujadas para forzar la carga AJAX 
+    // de sus subelementos si su checkbox está marcado (estado visible).
+    document.querySelectorAll(".categoria-checkbox").forEach(checkbox => {
+        if (checkbox.checked) {
+            
+            const categoriaId = checkbox.dataset.id;
+            const listaCategorias = checkbox.closest('.lista-categorias');
+            const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
+            const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
+
+            // Cargar el contenido de la categoría (Subcategorías y Subclasificaciones)
+            // Esto garantiza que todos los checkboxes dinámicos existan en el DOM.
+            const cargaPromise = fetch(`/obtener_contenido_categoria/${categoriaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // 1. Crear dinámicamente las subcategorías
+                    subcatListContainer.innerHTML = '';
+                    if (data.subcategorias) {
+                        data.subcategorias.forEach(sub => {
+                            crearItemSubcategoria(sub, subcatListContainer);
+                        });
+                    }
+                    // 2. Crear dinámicamente las subclasificaciones
+                    if (data.subclasificaciones_cat) {
+                        mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
+                    }
+                    // 3. Devolver un valor para que la promesa se resuelva correctamente
+                    return true;
+                })
+                .catch(err => {
+                    console.error('Error cargando contenido inicial de categoría: ', err);
+                    return false; // Asegurar que la promesa no falle Promise.all
+                });
+            cargarContenidoPromises.push(cargaPromise)
+        }
+    });
+
+    await Promise.all(cargarContenidoPromises)
+
+    // 🛑 Medida de Fuerza Bruta: Añadir un pequeño retraso
+    setTimeout(() => {
+        window.visibilidadListasListas = true;
+        restaurarEstadoVisibilidad(); // Aplica el estado guardado a los checkboxes inyectados
+        
+        if (typeof actualizarVisibilidadFigurasUsuario === "function") {
+            actualizarVisibilidadFigurasUsuario(); // Sincroniza el mapa
+        }
+        guardarEstadoVisibilidad();
+    }, 100); // 100 milisegundos de retraso
+
+    // PASO 3: Mantener la lógica de click (originalmente en el archivo)
     const botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
     botonCategorias.forEach(function(boton){
         boton.addEventListener("click", function(e){
@@ -49,7 +113,7 @@ export function inicializadorSidebar(){
                     });
                     
                     listaSubcategoriasUl.style.display = 'block';
-                    fetchContenidoCategoria(categoriaId, listaCategorias);
+                    fetchContenidoCategoria(categoriaId, listaCategorias); 
                 } else {
                     listaSubcategoriasUl.style.display = 'none';
                     
@@ -57,7 +121,37 @@ export function inicializadorSidebar(){
             }
         })
     });
-    restaurarEstadoVisibilidad();
+}
+
+// NUEVA FUNCIÓN AUXILIAR
+function crearItemSubcategoria(sub, subcatListContainer) {
+    const li = document.createElement('li');
+    const itemContainer = document.createElement('div');
+    itemContainer.className = 'contenedor-subcategorias';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    // No ponemos 'checked: true' aquí, ya que el estado se define en restaurarEstadoVisibilidad
+    checkbox.className = 'form-check-input subitem-checkbox subcat-checkbox';
+    checkbox.dataset.id = sub.id;
+    checkbox.dataset.tipo = 'subcategoria';
+    checkbox.dataset.categoria = sub.categoria_id;
+    checkbox.addEventListener('change', alternarVisibilidadFigUsuario)
+
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-suboption';
+    btn.dataset.id = sub.id;
+    btn.textContent = sub.nombre;
+
+    btn.addEventListener('click', function(event){
+        event.stopPropagation();
+        fetchContenidoSubcategoria(sub.id, this); 
+    });
+
+    itemContainer.appendChild(checkbox);
+    itemContainer.appendChild(btn);
+    li.appendChild(itemContainer);
+    subcatListContainer.appendChild(li);
 }
 
 // CODIGO PARA CARGAR EL CONTENIDO DE LAS CATEGORIAS Y SUBCATEGORIAS
@@ -81,34 +175,8 @@ export function fetchContenidoCategoria(categoriaId, listaCategorias) {
 
             if (data.subcategorias) {
                 data.subcategorias.forEach(sub => {
-                    const li = document.createElement('li');
-                    const itemContainer = document.createElement('div');
-                    itemContainer.className = 'contenedor-subcategorias';
-
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.checked = true;
-                    checkbox.className = 'form-check-input subitem-checkbox subcat-checkbox';
-                    checkbox.dataset.id = sub.id;
-                    checkbox.dataset.tipo = 'subcategoria';
-                    checkbox.dataset.categoria = sub.categoria_id;
-
-                    const btn = document.createElement('button');
-                    btn.className = 'sidebar-suboption';
-                    btn.dataset.id = sub.id;
-                    btn.textContent = sub.nombre;
-
-                    btn.addEventListener('click', function(event){
-                        event.stopPropagation();
-                        fetchContenidoSubcategoria(sub.id, this); 
-                    });
-
-                    itemContainer.appendChild(checkbox);
-                    itemContainer.appendChild(btn)
-
-                    li.appendChild(itemContainer);
-                    subcatListContainer.appendChild(li);
-                });
+                    crearItemSubcategoria(sub, subcatListContainer)
+                })
             }
 
             if (data.subclasificaciones_cat) {
@@ -118,8 +186,11 @@ export function fetchContenidoCategoria(categoriaId, listaCategorias) {
         .catch(err => {
             console.error('Error cargando categoría: ', err);
             subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
-        });
-    restaurarEstadoVisibilidad();
+        })
+        
+        setTimeout(() => {
+            restaurarEstadoVisibilidad();
+        }, 10);
 }
 
 //Funciones auxiliares para el fetch de subcategorias
@@ -149,8 +220,10 @@ export function fetchContenidoSubcategoria(subId, clickedButton){
             console.error('Error cargando las subclasificaciones: ', err),
             subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
         })
-
-    restaurarEstadoVisibilidad();
+        
+        setTimeout(() => {
+            restaurarEstadoVisibilidad();
+        }, 10);
 }
 
 export function mostrarSubclasificacion(items, container){
@@ -165,11 +238,12 @@ export function mostrarSubclasificacion(items, container){
             const checkbox = document.createElement('input');
             checkbox.className = 'form-check-input subitem-checkbox subclas-checkbox';
             checkbox.type = 'checkbox';
-            checkbox.checked = true;
+            //checkbox.checked = true;
             checkbox.dataset.id = subclas.id;
             checkbox.dataset.tipo = 'subclasificacion'
             checkbox.dataset.categoria = subclas.categoria_id;
             checkbox.dataset.subcategoria = subclas.subcategoria_id ?? null;
+            checkbox.addEventListener('change', alternarVisibilidadFigUsuario)
 
             const subclasBtn = document.createElement('button');
             subclasBtn.className = 'sidebar-suboption'
@@ -192,33 +266,7 @@ export function mostrarSubclasificacion(items, container){
             })
         })
     }
-    restaurarEstadoVisibilidad();
-}
-
-export function restaurarEstadoVisibilidad() {
-
-    const saved = localStorage.getItem("visibilidadFiguras");
-    if (!saved) return;
-
-    window.visibilidadFiguras = JSON.parse(saved);
-
-    document.querySelectorAll(".categoria-checkbox, .subcat-checkbox, .subclas-checkbox")
-        .forEach(cb => {
-            const key = `${cb.dataset.tipo}_${cb.dataset.id}`;
-            if (key in window.visibilidadFiguras) {
-                cb.checked = window.visibilidadFiguras[key];
-            }
-        });
-
-    actualizarVisibilidadFigurasUsuario();
-}
-
-function guardarEstadoVisibilidad() {
-    document.querySelectorAll(".categoria-checkbox, .subcat-checkbox, .subclas-checkbox")
-    .forEach(cb => {
-        const key = `${cb.dataset.tipo}_${cb.dataset.id}`
-        window.visibilidadFiguras[key] = cb.checked
-    })
-
-    localStorage.setItem('visibilidadFiguras', JSON.stringify(window.visibilidadFiguras))
+    setTimeout(() => {
+        restaurarEstadoVisibilidad();
+    }, 10);
 }

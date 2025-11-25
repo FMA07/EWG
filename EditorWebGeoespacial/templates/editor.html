@@ -191,8 +191,6 @@
         eliminarFigura,
         asignarDatosFigura,
         activarMododibujo,
-        alternarVisibilidad,
-        actualizarVisibilidadFigurasUsuario,
     } from "{% static 'js/funcionalidadCapas.js' %}"
 
     import {
@@ -208,6 +206,13 @@
         generarFormularioEditable,
     } from "{% static 'js/formularios.js' %}"
 
+    import {
+        guardarEstadoVisibilidad,
+        alternarVisibilidadFigUsuario,
+        actualizarVisibilidadFigurasUsuario,
+        restaurarEstadoVisibilidad,
+    } from "{% static 'js/visibilidad.js' %}"
+    window.visibilidadListasListas = false;
     window.capasVisibles = window.capasVisibles || {};
     window.visibilidadFiguras = window.visibilidadFiguras || {};
     window.camposOcultos = [
@@ -216,17 +221,17 @@
         '__origenCapa',
     ]
 
+    window.actualizarVisibilidadFigurasUsuario = actualizarVisibilidadFigurasUsuario;
     document.addEventListener("change", function (e) {
         if (e.target.matches(".categoria-checkbox") || 
             e.target.matches(".subcat-checkbox") ||
             e.target.matches(".subclas-checkbox")) { 
-            alternarVisibilidad(e);
+            alternarVisibilidadFigUsuario(e);
         }
     });
 
     //FUNCIONES DE LA LISTA DE CATEGORIAS
-    window.actualizarVisibilidadFigurasUsuario = actualizarVisibilidadFigurasUsuario;
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", async function () {
 
         mostrarProyectoActivo()
 
@@ -238,27 +243,20 @@
 
         tilesetsMapa(map, calles, satelite, relieve)
 
-        cargarCapas(map)
-
         window.editableLayers = new L.FeatureGroup().addTo(map)
 
         toggleSidebar()
         
-        inicializadorSidebar()
+        await inicializadorSidebar().then(() => {
+            restaurarEstadoVisibilidad()
 
+            cargarCapas(window.map).then(() => {
+                actualizarVisibilidadFigurasUsuario()  
+            })
+        })
         crearFigura()
 
         eliminarFigura()
-        
-
-
-
-        
-        
-
-        
-
-        
         
         
         //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL DE SUBCATEGORIA
@@ -300,9 +298,7 @@
             return cookieValue;
         }
 
-        //Para exportar ls capas
-
-        
+       
         
 
         //--------------------------------------//FORMULARIOS\\----------------------------------------------------------------
