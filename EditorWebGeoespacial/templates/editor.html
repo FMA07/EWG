@@ -212,7 +212,7 @@
         actualizarVisibilidadFigurasUsuario,
         restaurarEstadoVisibilidad,
     } from "{% static 'js/visibilidad.js' %}"
-    window.visibilidadListasListas = false;
+    
     window.capasVisibles = window.capasVisibles || {};
     window.visibilidadFiguras = window.visibilidadFiguras || {};
     window.camposOcultos = [
@@ -233,6 +233,8 @@
     //FUNCIONES DE LA LISTA DE CATEGORIAS
     document.addEventListener("DOMContentLoaded", async function () {
 
+        window.visibilidadListasListas = false;
+
         mostrarProyectoActivo()
 
         const {map, calles, satelite, relieve} = inicializacionMapa()
@@ -247,13 +249,16 @@
 
         toggleSidebar()
         
-        await inicializadorSidebar().then(() => {
-            restaurarEstadoVisibilidad()
+        await inicializadorSidebar()
 
-            cargarCapas(window.map).then(() => {
-                actualizarVisibilidadFigurasUsuario()  
-            })
-        })
+        await cargarCapas(window.map)
+
+        restaurarEstadoVisibilidad()
+
+        window.visibilidadListasListas = true;
+
+        actualizarVisibilidadFigurasUsuario()
+
         crearFigura()
 
         eliminarFigura()

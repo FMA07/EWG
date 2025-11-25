@@ -1,3 +1,5 @@
+export let ultimoEstadoVisibilidad = {}
+
 export function guardarEstadoVisibilidad() {
     const estadoFiguras = {}
 
@@ -15,14 +17,14 @@ export function restaurarEstadoVisibilidad() {
 
     if (!guardado) return
 
-    const estadoGuardado = JSON.parse(guardado)
+    ultimoEstadoVisibilidad = JSON.parse(guardado)
 
     document.querySelectorAll(".categoria-checkbox, .subcat-checkbox, .subclas-checkbox")
     .forEach(cb => {
         const key = `${cb.dataset.tipo}_${cb.dataset.id}`;
 
-        if (key in estadoGuardado) {
-            cb.checked = estadoGuardado[key]
+        if (key in ultimoEstadoVisibilidad) {
+            cb.checked = ultimoEstadoVisibilidad[key]
         } else {
             // Si es un checkbox nuevo, lo dejamos visible por defecto.
             cb.checked = true
@@ -61,6 +63,12 @@ export function alternarVisibilidadFigUsuario(e) {
 
 export function actualizarVisibilidadFigurasUsuario() {
 
+    console.log("CHECKBOXES ACTIVOS:",
+        document.querySelectorAll(".subcat-checkbox").length,
+        document.querySelectorAll(".subclas-checkbox").length
+    );
+
+    // Evitar aplicar mientras la sidebar no está lista
     if (!window.visibilidadListasListas) {
         console.log("Visibilidad NO aplicada (sidebar incompleto)");
         return;
@@ -68,59 +76,76 @@ export function actualizarVisibilidadFigurasUsuario() {
 
     console.log("Visibilidad SI aplicada (sidebar listo)");
 
-    const activasCat = new Set()
-    const activasSubcat = new Set()
-    const activasSubclas = new Set()
+    // Cargar último estado guardado
+    const guardado = localStorage.getItem("VisibilidadFiguras");
+    const ultimoEstadoVisibilidad = guardado ? JSON.parse(guardado) : {};
 
+    const activasCat = new Set();
+    const activasSubcat = new Set();
+    const activasSubclas = new Set();
+
+    // Checkbox ya cargados en el DOM
     document.querySelectorAll(".categoria-checkbox:checked")
-        .forEach(ch => activasCat.add(parseInt(ch.dataset.id)))
+        .forEach(ch => activasCat.add(parseInt(ch.dataset.id)));
 
     document.querySelectorAll(".subcat-checkbox:checked")
-        .forEach(ch => activasSubcat.add(parseInt(ch.dataset.id)))
+        .forEach(ch => activasSubcat.add(parseInt(ch.dataset.id)));
 
     document.querySelectorAll(".subclas-checkbox:checked")
-        .forEach(ch => activasSubclas.add(parseInt(ch.dataset.id)))
+        .forEach(ch => activasSubclas.add(parseInt(ch.dataset.id)));
 
     window.editableLayers.eachLayer(layer => {
 
-        const p = layer.feature?.properties
-        if (!p || p.tipo !== "usuario") return
+        const p = layer.feature?.properties;
+        if (!p || p.tipo !== "usuario") return;
 
-        let visible = true
+        let visible = true;
 
-        const catId = parseInt(p.categoria_id)
-        const subcatId = parseInt(p.subcategoria_id)
-        const subclasId = parseInt(p.subclasificacion_id)
+        const catId = parseInt(p.categoria_id);
+        const subcatId = parseInt(p.subcategoria_id);
+        const subclasId = parseInt(p.subclasificacion_id);
 
-        // Reglas:
-        console.log(
-            "SUBCAT EXISTE? ",
-            subcatId,
-            document.querySelector(`.subcat-checkbox[data-id='${subcatId}']`)
+        console.log("Figura:",
+            p.categoria_id,
+            p.subcategoria_id,
+            p.subclasificacion_id
         );
 
-        // 1) Categoría obligatoria
-        if (!activasCat.has(catId)) visible = false
+        // ---- REGLA 0: Subclasificación puede no existir aún en DOM ----
+        const keySubclas = `subclasificacion_${subclasId}`;
+        const checkboxSubclas = document.querySelector(`.subclas-checkbox[data-id='${subclasId}']`);
 
-        // 2) Subcategoría (si existe)
+        if (!checkboxSubclas) {
+            console.log("SUBCLAS AÚN NO EXISTE EN DOM → usando estado guardado");
+
+            if (keySubclas in ultimoEstadoVisibilidad) {
+                if (ultimoEstadoVisibilidad[keySubclas] === false) {
+                    visible = false;
+                }
+            } else {
+                // Nueva subclasificación, ocultar hasta que cargue
+                visible = false;
+            }
+        }
+
+        // ---- REGLA 1: Categoría obligatoria ----
+        if (!activasCat.has(catId)) visible = false;
+
+        // ---- REGLA 2: Subcategoría si existe ----
         if (!isNaN(subcatId) && subcatId > 0) {
-            if (!activasSubcat.has(subcatId)) visible = false
+            if (!activasSubcat.has(subcatId)) visible = false;
         }
 
-        // 3) Subclasificación obligatoria siempre
-        if (!activasSubclas.has(subclasId)) visible = false
+        // ---- REGLA 3: Subclasificación obligatoria ----
+        if (!activasSubclas.has(subclasId)) visible = false;
 
-        // Aplicación:
-
+        // ---- APLICACIÓN ----
         if (visible) {
-            if (!window.map.hasLayer(layer)) {
-                layer.addTo(window.map)
-            }
+            if (!window.map.hasLayer(layer)) layer.addTo(window.map);
         } else {
-            if (window.map.hasLayer(layer)) {
-                window.map.removeLayer(layer)
-            }
+            if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
         }
-
-    })
+    });
 }
+
+window.alternarVisibilidadFigUsuario = alternarVisibilidadFigUsuario;

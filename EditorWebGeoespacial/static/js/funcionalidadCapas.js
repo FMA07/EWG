@@ -619,6 +619,7 @@ export function dibujarFigurasUsuario(features) {
             layer.feature.properties.subclasificacion_id = feature.properties.subclasificacion_id
 
             window.editableLayers.addLayer(layer)
+            layer.addTo(window.map)
             attachEditListeners(layer)
 
             if (typeof window.mostrarDatosOffcanvas === 'function') {
@@ -628,4 +629,6 @@ export function dibujarFigurasUsuario(features) {
     }).addTo(window.map);
 
     console.log("Figuras de usuario cargadas")
+
+    window.visibilidadListaListas = true
 }

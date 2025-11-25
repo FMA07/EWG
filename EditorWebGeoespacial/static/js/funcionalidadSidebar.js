@@ -2,6 +2,7 @@ import {
     restaurarEstadoVisibilidad,
     guardarEstadoVisibilidad,
     alternarVisibilidadFigUsuario,
+    ultimoEstadoVisibilidad,
 } from "./visibilidad.js"
 
 /*
@@ -27,14 +28,11 @@ export function toggleSidebar() {
 }
 
 export async function inicializadorSidebar(){
-    
-    // PASO 1: Restaurar el estado de los checkboxes de las CATEGORÍAS que ya están en el HTML.
-    // Esto es necesario para saber qué categorías deben tener su contenido cargado.
+
     restaurarEstadoVisibilidad(); 
 
     const cargarContenidoPromises = []
-    // PASO 2: Iterar sobre las categorías ya dibujadas para forzar la carga AJAX 
-    // de sus subelementos si su checkbox está marcado (estado visible).
+ 
     document.querySelectorAll(".categoria-checkbox").forEach(checkbox => {
         if (checkbox.checked) {
             
@@ -43,23 +41,21 @@ export async function inicializadorSidebar(){
             const subcatListContainer = listaCategorias.querySelector(`#subcats-${categoriaId}`);
             const subclasListContainer = listaCategorias.querySelector(`#subclas-cat-${categoriaId}`);
 
-            // Cargar el contenido de la categoría (Subcategorías y Subclasificaciones)
-            // Esto garantiza que todos los checkboxes dinámicos existan en el DOM.
+          
             const cargaPromise = fetch(`/obtener_contenido_categoria/${categoriaId}/`)
                 .then(response => response.json())
                 .then(data => {
-                    // 1. Crear dinámicamente las subcategorías
+                    //Crear dinámicamente las subcategorías
                     subcatListContainer.innerHTML = '';
                     if (data.subcategorias) {
                         data.subcategorias.forEach(sub => {
                             crearItemSubcategoria(sub, subcatListContainer);
                         });
                     }
-                    // 2. Crear dinámicamente las subclasificaciones
+                    //Crear dinámicamente las subclasificaciones
                     if (data.subclasificaciones_cat) {
                         mostrarSubclasificacion(data.subclasificaciones_cat, subclasListContainer, null);
                     }
-                    // 3. Devolver un valor para que la promesa se resuelva correctamente
                     return true;
                 })
                 .catch(err => {
@@ -72,16 +68,7 @@ export async function inicializadorSidebar(){
 
     await Promise.all(cargarContenidoPromises)
 
-    // 🛑 Medida de Fuerza Bruta: Añadir un pequeño retraso
-    setTimeout(() => {
-        window.visibilidadListasListas = true;
-        restaurarEstadoVisibilidad(); // Aplica el estado guardado a los checkboxes inyectados
-        
-        if (typeof actualizarVisibilidadFigurasUsuario === "function") {
-            actualizarVisibilidadFigurasUsuario(); // Sincroniza el mapa
-        }
-        guardarEstadoVisibilidad();
-    }, 100); // 100 milisegundos de retraso
+    
 
     // PASO 3: Mantener la lógica de click (originalmente en el archivo)
     const botonCategorias = document.querySelectorAll(".boton-categorias-toggle");
@@ -138,6 +125,12 @@ function crearItemSubcategoria(sub, subcatListContainer) {
     checkbox.dataset.categoria = sub.categoria_id;
     checkbox.addEventListener('change', alternarVisibilidadFigUsuario)
 
+    const key = `subcategoria_${sub.id}`
+
+    if (key in ultimoEstadoVisibilidad) {
+        checkbox.checked = ultimoEstadoVisibilidad[key]
+    }
+
     const btn = document.createElement('button');
     btn.className = 'sidebar-suboption';
     btn.dataset.id = sub.id;
@@ -188,9 +181,7 @@ export function fetchContenidoCategoria(categoriaId, listaCategorias) {
             subcatListContainer.innerHTML = '<li>Error al cargar contenido de categoría.</li>';
         })
         
-        setTimeout(() => {
-            restaurarEstadoVisibilidad();
-        }, 10);
+        setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
 }
 
 //Funciones auxiliares para el fetch de subcategorias
@@ -221,9 +212,7 @@ export function fetchContenidoSubcategoria(subId, clickedButton){
             subclasLi.innerHTML = '<p>Error cargando las subclasificaciones</p>';
         })
         
-        setTimeout(() => {
-            restaurarEstadoVisibilidad();
-        }, 10);
+        setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
 }
 
 export function mostrarSubclasificacion(items, container){
@@ -244,6 +233,11 @@ export function mostrarSubclasificacion(items, container){
             checkbox.dataset.categoria = subclas.categoria_id;
             checkbox.dataset.subcategoria = subclas.subcategoria_id ?? null;
             checkbox.addEventListener('change', alternarVisibilidadFigUsuario)
+
+            const key = `subclasificacion_${subclas.id}`;
+            if (key in ultimoEstadoVisibilidad) {
+                checkbox.checked = ultimoEstadoVisibilidad[key];
+            }
 
             const subclasBtn = document.createElement('button');
             subclasBtn.className = 'sidebar-suboption'
@@ -266,7 +260,5 @@ export function mostrarSubclasificacion(items, container){
             })
         })
     }
-    setTimeout(() => {
-        restaurarEstadoVisibilidad();
-    }, 10);
+    setTimeout(() => actualizarVisibilidadFigurasUsuario(), 50)
 }
