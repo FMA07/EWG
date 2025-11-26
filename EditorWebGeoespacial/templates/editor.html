@@ -66,6 +66,7 @@
             </div>
         </div>
     </div>
+    <!--    MODALES DESHABILITADOS POR SI SE USAN EN UN FUTURO PARA CREACIÓN DE CATS, SUBCATS Y SUBCLAS EN EL EDITOR
     <div class="modal fade" id="modalEstaticoCategoria" tabindex="-1" aria-labelledby="modalEstaticoCategoria" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -119,7 +120,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
     <!--Modal de datos de nueva figura-->
     <div class="modal fade" id="modalNuevaFigura" tabindex="-1" aria-labelledby="modalNuevaFigura" aria-hidden="true" data-bs-keyboard="false" data-bs-backdrop="static">
         <div class="modal-dialog">
@@ -263,78 +264,6 @@
 
         eliminarFigura()
         
-        
-        
-        
-        
-
-        //PARA ENVIAR LAS CATEGORIAS Y SUBCATEGORIAS A LA BASE DE DATOS POR AJAX
-        
-
-       
-        
-
-        //--------------------------------------//FORMULARIOS\\----------------------------------------------------------------
-        
-
-        
-        
-        
-
-        
-
-        function figuraForm(subclasificacion){
-            const campos = subclasificacion.campos || [];
-            const modalFig = document.getElementById('modalNuevaFigura');
-            const form = modalFig.querySelector('form');
-            form.innerHTML = ''
-
-            campos.forEach(campo =>{
-                const label = document.createElement('label')
-                label.textContent = campo.label
-                label.className = 'form-label mt-2'
-
-                let input;
-
-                if (campo.tipo === 'select') {
-                    input = document.createElement('select')
-                    campo.opciones.forEach(op => {
-                        const opcion = document.createElement('option');
-                        opcion.value = op;
-                        opcion.textContent = op;
-                        input.appendChild(opcion);
-                    })
-                } else if (campo.tipo === 'textarea') {
-                    input = document.createElement('textarea');
-                    input.rows = 2;
-                } else {
-                    input = document.createElement('input');
-                    input.type = campo.tipo;
-                }
-
-                input.name = campo.nombre;
-                input.classList.add('form-control');
-                form.appendChild(label);
-                form.appendChild(input);
-            })
-
-            const btnGuardar = document.createElement('button');
-            btnGuardar.type = 'submit';
-            btnGuardar.textContent = 'Guardar figura';
-            btnGuardar.className = 'btn btn-primary mt-3'
-
-            form.appendChild(btnGuardar);
-
-            const modal = new bootstrap.Modal(modalFig);
-            modal.show();
-
-            form.onsubmit = e => {
-                e.preventDefault();
-                const formData = new FormData(form);
-                const atributos = Object.fromEntries(formData.entries());
-                modal.hide();
-            }
-    }
 });
 </script>
 {% endblock %}

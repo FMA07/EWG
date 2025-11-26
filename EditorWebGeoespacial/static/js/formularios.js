@@ -134,61 +134,221 @@ export function guardarAtributosEditados(layer, formElement) {
 }
 
 //__________________________________________//FORMULARIOS CRUD\\__________________________________________
-/*
-export function formularioCategoria() {
-    const categoriaForm = document.getElementById('categoriaForm');
-        
-    categoriaForm.addEventListener('submit', function(e){
-        e.preventDefault();
 
-        const formData = new FormData(document.getElementById('categoriaForm'));
-        formData.append('tipo_form', 'categoria')
-
-        fetch('guardar_por_ajax', {
-            method: 'POST',
-            body: formData,
-            headers: {'X-CSRFToken': csrftoken},
-        })
-        .then(response => response.json())
-        .then(data => { //De acá para abajo, si se guarda exitosamente la categoría, se cierra el modal y se actualiza la lista del sidebar
-            if (data.success && data.tipo === 'categoria'){
-                console.log("Guardado con éxito: ", data.nombre);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoCategoria'));
-                categoriaForm.reset();
-                modal.hide();
-
-                const sidebarList = document.querySelector('#sidebar-body ul');
-                const newLi = document.createElement('li');
-                newLi.className = 'lista-categorias';
-                
-                const contenedorCategorias = document.createElement('div');
-                contenedorCategorias.className ='contenedor-categorias';
-
-                const checkbox = document.createElement('input');
-                checkbox.className = 'form-check-input subitem-checkbox categoria-checkbox';
-                checkbox.type = 'checkbox';
-                checkbox.checked = true;
-                checkbox.dataset.id = 'data.id'
-                checkbox.dataset.tipo = 'categoria'
-                checkbox.addEventListener('change', alternarVisibilidadFigUsuario)
-                
-                const nuevaCategoria = document.createElement('button');
-                nuevaCategoria.className = 'sidebar-options';
-                nuevaCategoria.textContent = `${data.nombre}`
-
-                contenedorCategorias.appendChild(checkbox);
-                contenedorCategorias.appendChild(nuevaCategoria);
-                newLi.appendChild(contenedorCategorias);
-                sidebarList.appendChild(newLi);
-
-                
-            } else {
-                console.error("Error: ", data.errors);
+/* FUNCIONES COMENTADAS POR SI SE DECIDE UTILIZARLAS EN UN FUTURO
+//--------------------------------------//FORMULARIOS\\----------------------------------------------------------------
+//PARA ENVIAR LAS CATEGORIAS Y SUBCATEGORIAS A LA BASE DE DATOS POR AJAX
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
             }
-        })
-    })
-}*/
+            return cookieValue;
+        }
 
+const csrftoken = getCookie('csrftoken');
+
+const categoriaForm = document.getElementById('categoriaForm');
+
+categoriaForm.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    const formData = new FormData(document.getElementById('categoriaForm'));
+    formData.append('tipo_form', 'categoria')
+
+    fetch('guardar_por_ajax', {
+        method: 'POST',
+        body: formData,
+        headers: {'X-CSRFToken': csrftoken},
+    })
+    .then(response => response.json())
+    .then(data => { //De acá para abajo, si se guarda exitosamente la categoría, se cierra el modal y se actualiza la lista del sidebar
+        if (data.success && data.tipo === 'categoria'){
+            console.log("Guardado con éxito: ", data.nombre);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoCategoria'));
+            categoriaForm.reset();
+            modal.hide();
+
+            const sidebarList = document.querySelector('#sidebar-body ul');
+            const newLi = document.createElement('li');
+            newLi.className = 'lista-categorias';
+            
+            const contenedorCategorias = document.createElement('div');
+            contenedorCategorias.className ='contenedor-categorias';
+
+            const checkbox = document.createElement('input');
+            checkbox.className = 'form-check-input subitem-checkbox';
+            checkbox.type = 'checkbox';
+            checkbox.checked = true;
+            checkbox.dataset.id = 'data.id'
+            checkbox.dataset.tipo = 'categoria'
+            
+            const nuevaCategoria = document.createElement('button');
+            nuevaCategoria.className = 'sidebar-options';
+            nuevaCategoria.textContent = `${data.nombre}`
+
+            contenedorCategorias.appendChild(checkbox);
+            contenedorCategorias.appendChild(nuevaCategoria);
+            newLi.appendChild(contenedorCategorias);
+            sidebarList.appendChild(newLi);
+
+            
+        } else {
+            console.error("Error: ", data.errors);
+        }
+    })
+})
+*//*
+const subcategoriaForm = document.getElementById('subcategoriaForm');
+
+subcategoriaForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(subcategoriaForm);
+    formData.append('tipo_form', 'subcategoria');
+    const categoriaSelect = subcategoriaForm.querySelector('#id_categoria');
+    const categoriaId = categoriaSelect ? categoriaSelect.value : null;
+
+    fetch('guardar_por_ajax', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': csrftoken },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoSubcategoria'));
+            subcategoriaForm.reset();
+            modal.hide();
+
+            if (categoriaId) {
+                const botonCategoria = document.querySelector(`.boton-categorias-toggle[data-id='${categoriaId}']`);
+                const listaCategoria = botonCategoria ? botonCategoria.closest('.lista-categorias') : null;
+                const listaSubcategoriasUl = listaCategoria ? listaCategoria.querySelector('.lista-subcategorias') : null;
+
+                if (listaSubcategoriasUl) {
+                    listaSubcategoriasUl.style.display = 'block';
+                }
+
+                if (listaCategoria) {
+                fetchContenidoCategoria(categoriaId, listaCategoria);
+                }
+            }
+
+            
+        } else {
+            console.error("Error:", data.errors);
+        }
+    });
+});
+*//*
+const subclasForm = document.getElementById('subclasForm');
+
+subclasForm.addEventListener('submit', function (e){
+    e.preventDefault();
+    const formData = new FormData(subclasForm);
+    formData.append('tipo_form', 'subclasificacion');
+    const categoriaSelect = subclasForm.querySelector('#id_categoria');
+    const categoriaId = categoriaSelect ? categoriaSelect.value : null;
+    const camposConfig = document.getElementById('id_campos_config').value;
+    try{
+        JSON.parse(camposConfig);
+    } catch(error) {
+        alert('El formato del JSON no es válido. Corrígelo antes de guardar');
+        return;
+    }
+
+    fetch('guardar_por_ajax', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': csrftoken },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.tipo === 'subclasificacion') {
+            console.log('Subclasificación guardada exitosamente: ', data.nombre);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstaticoSubclasificacion'));
+            subclasForm.reset();
+            modal.hide();
+
+            if (categoriaId) {
+                const botonCategoria = document.querySelector(`.boton-categorias-toggle[data-id='${categoriaId}']`);
+                const listaCategoria = botonCategoria ? botonCategoria.closest('.lista-categorias') : null;
+                const listaSubcategoriasUl = listaCategoria ? listaCategoria.querySelector('.lista-subcategorias') : null;
+
+                if (listaSubcategoriasUl) {
+                    listaSubcategoriasUl.style.display = 'block';
+                }
+
+                if (listaCategoria) {
+                    fetchContenidoCategoria(categoriaId, listaCategoria);
+                }
+            }
+
+        } else {
+            console.error("Error: ", data.errors);
+        }
+    })
+})
+*//*
+function figuraForm(subclasificacion){
+    const campos = subclasificacion.campos || [];
+    const modalFig = document.getElementById('modalNuevaFigura');
+    const form = modalFig.querySelector('form');
+    form.innerHTML = ''
+
+    campos.forEach(campo =>{
+        const label = document.createElement('label')
+        label.textContent = campo.label
+        label.className = 'form-label mt-2'
+
+        let input;
+
+        if (campo.tipo === 'select') {
+            input = document.createElement('select')
+            campo.opciones.forEach(op => {
+                const opcion = document.createElement('option');
+                opcion.value = op;
+                opcion.textContent = op;
+                input.appendChild(opcion);
+            })
+        } else if (campo.tipo === 'textarea') {
+            input = document.createElement('textarea');
+            input.rows = 2;
+        } else {
+            input = document.createElement('input');
+            input.type = campo.tipo;
+        }
+
+        input.name = campo.nombre;
+        input.classList.add('form-control');
+        form.appendChild(label);
+        form.appendChild(input);
+    })
+
+    const btnGuardar = document.createElement('button');
+    btnGuardar.type = 'submit';
+    btnGuardar.textContent = 'Guardar figura';
+    btnGuardar.className = 'btn btn-primary mt-3'
+
+    form.appendChild(btnGuardar);
+
+    const modal = new bootstrap.Modal(modalFig);
+    modal.show();
+
+    form.onsubmit = e => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const atributos = Object.fromEntries(formData.entries());
+        modal.hide();
+    }
+}*/
 
 
 export function formularioSubclas() {
