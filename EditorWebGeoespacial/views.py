@@ -189,6 +189,71 @@ def obtener_categoria(request, categoria_id):
         'nombre': categoria.nombre
     })
 
+@permission_required('is_staff', login_url='/')
+def admin_subcategorias(request):
+    formSubcat = FormularioSubcategoria
+    subcategorias = Subcategoria.objects.all().order_by('nombre')
+    context= {
+        'subcategorias': subcategorias,
+        'formSubcat': formSubcat,
+    }
+    return render(request, 'CRUDCapas/adminSubcategorias.html', context)
+
+def guardar_subcategoria(request):
+    if request.method == "POST":
+        form = FormularioSubcategoria(request.POST, request.FILES)
+        if form.is_valid():
+            nueva_subcat = form.save()
+
+            categoria_id = nueva_subcat.categoria.id
+            subcategorias = list(Subcategoria.objects.values('id', 'nombre', 'categoria__nombre'))
+            return JsonResponse({
+                'success': True,
+                'tipo': 'subcategoria',
+                'nombre': nueva_subcat.nombre,
+                'id': nueva_subcat.id,
+                'categoria_id': categoria_id,
+                'subcategorias': subcategorias,
+            })
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors})
+    return JsonResponse({'success': False, 'error': 'Método no permitido', 'code': 405})
+
+def editar_subcat(request, subcatId):
+    subcategoria = get_object_or_404(Subcategoria, pk=subcatId)
+    if request.method == "GET":
+        return JsonResponse({
+            'id': subcategoria.id,
+            'nombre': subcategoria.nombre,
+            'categoria': subcategoria.categoria.nombre,
+        })
+    elif request.method == "POST":
+        form = FormularioSubcategoria(request.POST, instance=subcategoria)
+
+        if form.is_valid():
+            subcatActual = form.save()
+
+            subcategorias = list(Subcategoria.objects.values('id', 'nombre', 'categoria__nombre'))
+            return JsonResponse({
+                'success': True,
+                'tipo': 'subcategoria',
+                'nombre': subcatActual.nombre,
+                'id': subcatActual.id,
+                'categoria_id': subcatActual.categoria.id,
+                'subcategorias': subcategorias,
+            })
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors})
+        
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+def eliminar_subcat(request, subcatId):
+    subcategoria = get_object_or_404(Subcategoria, pk=subcatId)
+    if request.method == "POST":
+        subcategoria.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+
 #____________________________________________________________________________________________________________________________
 @login_required
 def asociar_categoria_a_proyecto(request):

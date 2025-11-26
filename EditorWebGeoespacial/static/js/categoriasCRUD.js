@@ -106,18 +106,18 @@ export function editarCategoria(){
     const offcanvasElement = document.getElementById('offcanvasFormulario');
     const titulo = document.getElementById('tituloFormularioCategoria');
     const form = document.getElementById('formCategoria');
-    const btnSubmit = document.getElementById('btnSubmitCategoria');
 
     if (!btnEditar) return;
 
     btnEditar.addEventListener('click', () => {
         const seleccionadas = document.querySelectorAll('#seccionTablaCategorias input[type="checkbox"]:checked');
-        const categoriaId = seleccionadas[0].value
-
+        
         if (seleccionadas.length !== 1) {
             alert("Selecciona exactamente UNA categoría para editar.");
             return;
         }
+
+        const categoriaId = seleccionadas[0].value
 
         fetch(`/editar_categoria/${categoriaId}/`)
         .then(r => r.json())
@@ -129,6 +129,10 @@ export function editarCategoria(){
 
             const offcanvas = new bootstrap.Offcanvas(offcanvasElement);
             offcanvas.show();
+        })
+        .catch(error => {
+            console.error('Error al obtener los datos de la categoría: ', error)
+            alert("Error al cargar los datos de edición")
         })
     })
 }
