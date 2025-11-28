@@ -1,3 +1,5 @@
+import { generarInputPorTipo, mostrarDatosOffcanvas } from "./formularios.js"
+
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -403,8 +405,12 @@ export function crearFigura() { //Llamada por activarModoDibujo()
             return
         }
 
+
         attachEditListeners(layer);
         asignarDatosFigura(layer);
+        layer.on('click', () => {
+            mostrarDatosOffcanvas(layer)
+        })
     });
 }
 
@@ -455,6 +461,7 @@ export function asignarDatosFigura(layer){
     offcanvasBody.innerHTML = '';
 
     if (sub.campos && sub.campos.length > 0) {
+
         const form = document.createElement('form');
         form.id = 'atributosFiguraForm';
 
@@ -462,13 +469,13 @@ export function asignarDatosFigura(layer){
             const group = document.createElement('div');
             group.className = 'mb-3';
 
-            const input = document.createElement('input');
-            input.className = 'form-control';
-            input.name = campo.nombre;
-            input.type = campo.tipo === 'number' ? 'number' : 'text';
-            input.placeholder = `Ingrese ${campo.nombre.toLowerCase()}`;
+            const label = document.createElement('label');
+            label.innerHTML = `<strong>${campo.nombre}</strong>`;
+            group.appendChild(label);
 
-            group.appendChild(input);
+            const html = generarInputPorTipo(campo);
+            group.insertAdjacentHTML("beforeend", html);
+
             form.appendChild(group);
         });
 
@@ -484,6 +491,37 @@ export function asignarDatosFigura(layer){
             form.querySelectorAll('input').forEach(input => {
                 datos[input.name] = input.value;
             });
+
+            for (let campo of sub.campos) {
+                const valor = datos[campo.nombre]
+
+                if (campo.tipo === "numero") {
+                    if (valor.trim() === "") {
+                        alert(`El campo "${campo.nombre}" es obligatorio y debe ser un número.`);
+                        return;
+                    }
+
+                    if (!/^-?\d+(\.\d+)?$/.test(valor)) {
+                        alert(`El campo "${campo.nombre}" debe contener solo números.`);
+                        return;
+                    }
+                }
+
+                if (campo.tipo === "fecha") {
+                    const fechaOk = !isNaN(Date.parse(valor));
+                    if (!fechaOk) {
+                        alert(`El campo "${campo.nombre}" debe ser una fecha válida.`);
+                        return;
+                    }
+                }
+
+                if (campo.tipo === "booleano") {
+                    if (!["true", "false"].includes(valor)) {
+                        alert(`El campo "${campo.nombre}" debe ser Sí o No.`);
+                        return;
+                    }
+                }
+            }
 
             console.log('Layer recibido:', layer);
             console.log('Tiene toGeoJSON?:', typeof layer.toGeoJSON);

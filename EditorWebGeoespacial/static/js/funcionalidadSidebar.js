@@ -1,6 +1,5 @@
 import {
     restaurarEstadoVisibilidad,
-    guardarEstadoVisibilidad,
     alternarVisibilidadFigUsuario,
     ultimoEstadoVisibilidad,
     actualizarVisibilidadFigurasUsuario,
@@ -281,7 +280,9 @@ export function mostrarSubclasificacion(items, container){
                 const subclasData = items.find(i => i.id == subclasId)
 
                 window.subclasSeleccionada = subclasData
-                window.activarMododibujo(subclasId);
+                if (!window.mapaPublico && window.activarMododibujo) {
+                    window.activarMododibujo(subclasId);
+                }
             })
         })
     }

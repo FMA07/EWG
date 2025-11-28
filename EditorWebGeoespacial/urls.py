@@ -26,5 +26,6 @@ urlpatterns = [
     path('capas_del_proyecto/', views.capas_del_proyecto, name='capas_del_proyecto'),
     path('exportar_SHP/', views.exportar_SHP, name='exportar_SHP'),
     path('eliminar_capa_importada/<int:capa_id>/', views.eliminar_capa_importada, name='eliminar_capa_importada'),
+    path('cargar_figuras_publicas/', views.cargar_figuras_publicas, name='cargar_figuras_publicas'),
     path('', include('EditorWebGeoespacial.pages.pageUrls'))
     ]

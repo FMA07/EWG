@@ -96,7 +96,10 @@ def editor(request):
 
 @login_required
 def listaCategorias(request):
-    categorias = Categoria.objects.all()
+    categorias = Categoria.objects.all().prefetch_related(
+        "subcategoria_set",
+        "subclasificacion_set"
+    )
     context = {
         'categorias': categorias
     }

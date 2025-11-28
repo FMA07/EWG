@@ -1,6 +1,7 @@
 export let ultimoEstadoVisibilidad = {}
 
 export function guardarEstadoVisibilidad() {
+    if (window.mapaPublico) return;
     const estadoFiguras = {}
 
     document.querySelectorAll(".categoria-checkbox, .subcat-checkbox, .subclas-checkbox")
@@ -33,6 +34,8 @@ export function restaurarEstadoVisibilidad() {
 }
 
 export function alternarVisibilidadFigUsuario(e) {
+    if (window.mapaPublico) return;
+    
     const target = e?.target
     
     if (!target) return
@@ -62,6 +65,11 @@ export function alternarVisibilidadFigUsuario(e) {
 }
 
 export function actualizarVisibilidadFigurasUsuario() {
+
+    if (window.mapaPublico) {
+        console.log("Mapa público - sin visibilidad de usuario");
+        return;
+    }
 
     console.log("CHECKBOXES ACTIVOS:",
         document.querySelectorAll(".subcat-checkbox").length,

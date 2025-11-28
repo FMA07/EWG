@@ -42,6 +42,7 @@ class Subclasificacion(models.Model):
     subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
     nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos
     tipo_geometria      = models.CharField(max_length=20, choices=OPCIONES_GEOMETRIA, default='')
+    publica             = models.BooleanField()
     campos_config       = models.JSONField(default=list, blank=True)
     
     def __str__(self):

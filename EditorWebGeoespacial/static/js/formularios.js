@@ -1,4 +1,3 @@
-import { alternarVisibilidadFigUsuario } from "./visibilidad.js"
 import { guardarCambiosFigura } from "./funcionalidadCapas.js";
 
 let capaEnVista = null
@@ -67,35 +66,70 @@ export function mostrarDatosOffcanvas(layer){
 }
 window.mostrarDatosOffcanvas = mostrarDatosOffcanvas
 
-export function generarFormularioEditable(layer){
+export async function generarFormularioEditable(layer){
     window.capaActualmenteEditada = layer;
-    const properties = layer.feature && layer.feature.properties ? layer.feature.properties : {};
+    const properties = layer.feature?.properties || {};
     const offcanvasBody = document.getElementById('cuerpoTablas');
 
     offcanvasBody.innerHTML = '';
 
+    // OBTENER ID DE SUBCLASIFICACIÓN
+    const idSubclas = properties.subclasificacion || properties.subclasificacion_id;
+
+    let camposConfig = [];
+
+    if (idSubclas) {
+        try {
+            const resp = await fetch(`/editar_subclasificacion/${idSubclas}/`);
+            const data = await resp.json();
+            camposConfig = data.campos_config || [];
+        } catch (error) {
+            console.error("Error obteniendo config dinámica:", error);
+        }
+    }
+
+    // ARMAR FORMULARIO
     let formHtml = '<form id="atributosFiguraForm">';
     formHtml += '<table class= "table table-striped table-sm">';
     formHtml += '<thead><tr><th>Atributo</th><th>Valor</th></tr></thead>';
     formHtml += '<tbody>';
 
-    const propKeys = Object.keys(properties);
+    // USAR CAMPOS DINÁMICOS SI EXISTEN
+    if (camposConfig.length > 0) {
 
-    if (propKeys.length === 0) {
-        formHtml = `<tr><td><strong>Nuevo Atributo</strong></td><td><input type="text" class="form-control form-control-sm" name="nuevo_atributo_1" value=""></td></tr>`;
+        camposConfig.forEach(campo => {
+            const valor = properties[campo.nombre] ?? "";
+
+            formHtml += `
+                <tr>
+                    <td><strong>${campo.nombre}</strong></td>
+                    <td>
+                        ${generarInputPorTipo(campo).replace('">', `" value="${valor}">`)}
+                    </td>
+                </tr>
+            `;
+        });
+
     } else {
-        for (const key of propKeys) {
-            if (camposOcultos.includes(key)) continue;
-            const safeValue = (properties[key] === null || properties[key] === undefined) ? '' : properties[key];
-            formHtml += `<tr><td><strong>${key}</strong></td><td><input type="text" class="form-control form-control-sm" name="${key}" value="${safeValue}"></td></tr>`;
-        }
+        // SIN CAMPOS DINÁMICOS → Método antiguo
+        const keys = Object.keys(properties);
+        keys.forEach(key => {
+            if (camposOcultos.includes(key)) return;
+
+            const valor = properties[key] ?? "";
+            formHtml += `
+                <tr>
+                    <td><strong>${key}</strong></td>
+                    <td><input type="text" class="form-control form-control-sm" name="${key}" value="${valor}"></td>
+                </tr>`;
+        });
     }
 
-    formHtml += '</tbody></table>'
+    formHtml += '</tbody></table>';
     formHtml += '<button type="submit" class="btn btn-success btn-sm mt-3">Guardar cambios</button>';
     formHtml += '</form>';
 
-    offcanvasBody.innerHTML = formHtml
+    offcanvasBody.innerHTML = formHtml;
 
     document.getElementById('atributosFiguraForm').addEventListener('submit', function(e){
         e.preventDefault();
@@ -131,6 +165,38 @@ export function guardarAtributosEditados(layer, formElement) {
 
     alert('Atributos guardados exitosamente')
     window.mostrarDatosOffcanvas(layer);
+}
+
+export function generarInputPorTipo(campo) {
+    switch (campo.tipo) {
+
+        case "numero":
+            return `<input type="text"
+                   class="form-control"
+                   name="${campo.nombre}"
+                   inputmode="numeric"
+                   oninput="this.value = this.value.replace(/[^0-9.-]/g, '')"
+                   placeholder="Solo números"
+                   required>`;
+
+        case "fecha":
+            return `<input type="date" 
+                           class="form-control" 
+                           name="${campo.nombre}">`;
+
+        case "booleano":
+            return `<select class="form-select" 
+                            name="${campo.nombre}">
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>`;
+
+        default:
+        case "texto":
+            return `<input type="text" 
+                           class="form-control" 
+                           name="${campo.nombre}">`;
+    }
 }
 
 //__________________________________________//FORMULARIOS CRUD\\__________________________________________
@@ -350,7 +416,7 @@ function figuraForm(subclasificacion){
     }
 }*/
 
-
+/*
 export function formularioSubclas() {
     const subclasForm = document.getElementById('subclasForm');
 
@@ -401,7 +467,7 @@ export function formularioSubclas() {
         })
     })
 }
-
+*/
 /*ESTAS DOS FUNCIONES YA NO SE USAN, ERA PARA LA CREACIÓN DE CATEGORIAS, SUBCATEGORIAS Y SUBCLASIFICACIONES EN EL EDITOR. LAS DEJO POR SI SE VUELVE A IMPLEMENTAR
 //PARA ASIGNAR LA CATEGORIA AUTOMATICAMENTE EN EL MODAL DE SUBCATEGORIA
 export function cargarCatFormSubcat() {

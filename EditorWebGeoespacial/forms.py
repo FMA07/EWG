@@ -25,7 +25,7 @@ class FormularioSubcategoria(forms.ModelForm):
 class FormularioSubclasificacion(forms.ModelForm):
     class Meta:
         model = Subclasificacion
-        fields = ["categoria", "subcategoria", "nombre", "tipo_geometria"]
+        fields = ["categoria", "subcategoria", "nombre", "tipo_geometria", "publica"]
 
 class FormularioProyecto(forms.ModelForm):
     categoria = forms.ModelMultipleChoiceField(

@@ -765,3 +765,30 @@ def exportar_SHP(request):
     except Exception as e:
         print(f"Error al exportar shapefile: {e}")
         return JsonResponse({'error': f'Error interno del servidor: {str(e)}'}, status = 500)
+    
+def cargar_figuras_publicas(request):
+    subclas_publicas = Subclasificacion.objects.filter(publica=True)
+    figuras = Figura.objects.filter(subclasificacion__in=subclas_publicas)
+
+    listaFiguras = []
+
+    for fig in figuras:
+        subclas = fig.subclasificacion
+
+        geom_4326 = fig.geom.transform(4326, clone=True)
+        geom_json = {
+            "type": "Feature",
+            "properties": fig.atributos,
+            "geometry": json.loads(geom_4326.json)
+        }
+
+        listaFiguras.append({
+            "id": fig.id,
+            "geom": geom_json,
+            "atributos": fig.atributos,
+            "subclasificacion": subclas.nombre if subclas else None,
+            "subcategoria": subclas.subcategoria.nombre if subclas and subclas.subcategoria else None,
+            "categoria": subclas.categoria.nombre if subclas else None,
+        })
+
+    return JsonResponse({"figuras": listaFiguras})

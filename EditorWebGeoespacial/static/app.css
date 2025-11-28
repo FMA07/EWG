@@ -161,6 +161,30 @@ body, html{
 .row {
     transition: all 0.3s ease;
 }
+/*___________________________________________________CRUD CAPAS________________________________________________*/
+.contenedor-menu {
+    min-height: 100vh;
+    position: relative; 
+}
+
+.menu-CRUD{
+    width: 300px;
+    margin-left: 40%;
+    margin-right: auto;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%); 
+    align-content: center;
+    align-items: center;
+    background-color: #e6ebee;
+}
+
+.link-CRUD{
+    text-decoration: none;
+    color: #212529;
+    font-weight: bold;
+    font-size: 20px;
+}
 
 /*Personalización sidebar*/
 
