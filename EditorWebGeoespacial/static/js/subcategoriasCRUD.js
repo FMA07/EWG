@@ -38,7 +38,6 @@ export function guardarSubcat() {
 
         fetch(url , {
             method: 'POST',
-            body: formData,
             headers: { 'X-CSRFToken': csrftoken },
             body: formData,
         })
@@ -124,7 +123,7 @@ export function editar_subcat() {
         fetch(`/editar_subcategoria/${subcatId}/`)
         .then(r => r.json())
         .then(data => {
-            titulo.textContent = 'Editar categoría'
+            titulo.textContent = 'Editar subcategoría'
             form.querySelector('input[name="nombre"]').value = data.nombre
 
             form.dataset.editing = subcatId;
@@ -153,7 +152,7 @@ export function eliminar_subcat() {
         })
 
         if (subcatsAEliminar.length === 0) {
-            alert("Debe seleccionar al menos una categoría para eliminar")
+            alert("Debe seleccionar al menos una subcategoría para eliminar")
             return
         }
 
@@ -171,7 +170,7 @@ export function eliminar_subcat() {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error al eliminar la categoría ${subcatId}: ${response.statusText}`)
+                    throw new Error(`Error al eliminar la subcategoría ${subcatId}: ${response.statusText}`)
                 }
                 return response.json()
             })
@@ -187,7 +186,7 @@ export function eliminar_subcat() {
 
         Promise.all(eliminarPromesas)
             .then(() => {
-                alert("Categorías eliminadas correctamente.")
+                alert("Subcategorías eliminadas correctamente.")
             })
             .catch(error => {
                 console.error('Error al eliminar subcategorías:', error)

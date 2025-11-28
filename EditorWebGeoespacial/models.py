@@ -38,7 +38,7 @@ class Subclasificacion(models.Model):
         ('LineString', 'PoliLínea'),
         ('Polygon', 'Polígono'),
     ]
-    categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    categoria           = models.ForeignKey(Categoria, on_delete=models.CASCADE, blank=False, null=False)
     subcategoria        = models.ForeignKey(Subcategoria, on_delete=models.CASCADE, blank=True, null=True)
     nombre              = models.CharField(max_length=100) #Ejemplo: microbasurales < distintos microbasurales; grifos < distintos grifos
     tipo_geometria      = models.CharField(max_length=20, choices=OPCIONES_GEOMETRIA, default='')

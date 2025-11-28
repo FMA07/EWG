@@ -1,11 +1,11 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required, permission_required
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.gis.geos import GEOSGeometry
-from .forms import RegistroForm, FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion, FormularioProyecto
+from .forms import FormularioCategoria, FormularioSubcategoria, FormularioSubclasificacion, FormularioProyecto
 from .models import Categoria, Subcategoria, Subclasificacion, Proyecto, Figura, Capa_importada
 import json
 import io
@@ -17,119 +17,7 @@ from shapely.geometry import shape
 
 
 # Create your views here.
-@login_required
-def editor(request):    
-    proyectoId = request.session.get('proyecto_activo_id')
-
-    if not proyectoId: #Para cargar el id del último proyecto activo si se cierra sesión
-        ultimoProyecto = Proyecto.objects.filter(autor=request.user).order_by('-id').first()
-        if ultimoProyecto:
-            request.session['proyecto_activo_id'] = ultimoProyecto.id
-            proyectoId = ultimoProyecto.id
-
-        else: #Si no hay proyecto activo, la lista de categorías queda vacía.
-            return render(request, 'editor.html', {
-                "categorias": Categoria.objects.none(),
-                "subcategorias": Subcategoria.objects.all(),   
-                "formCategoria": FormularioCategoria(),
-                "formSubcategoria": FormularioSubcategoria(),
-                "formSubclas": FormularioSubclasificacion(),
-                "capas_importadas": [],
-                "proyecto_activo": None,
-            })
-    #Si ya existe un proyecto activo, se cargan sus datos
-
-    try:
-        proyecto = Proyecto.objects.get(id=proyectoId, autor=request.user)
-        categorias = proyecto.categoria.all()
-        capas_importadas = proyecto.capa_importada.all()
-
-    except Proyecto.DoesNotExist:
-        request.session.pop('proyecto_activo_id', None)
-        return render(request, 'editor.html', {
-            "categorias": Categoria.objects.none(),
-            "subcategorias": Subcategoria.objects.all(),   # ✔ consistente
-            "formCategoria": FormularioCategoria(),
-            "formSubcategoria": FormularioSubcategoria(),
-            "formSubclas": FormularioSubclasificacion(),
-            "capas_importadas": [],
-            "proyecto_activo": None,
-        })
-
-    if request.method == 'POST':
-        formCategoria = FormularioCategoria(request.POST, request.FILES)
-        formSubcategoria = FormularioSubcategoria(request.POST, request.FILES)
-        formSubclas = FormularioSubclasificacion(request.POST, request.FILES)
-
-        if formCategoria.is_valid():
-            formCategoria.save()
-            return redirect('editor')
-        if formSubcategoria.is_valid():
-            formSubcategoria.save()
-            return redirect('editor')
-        if formSubclas.is_valid():
-            formSubclas.save()
-            return redirect('editor')
-    else:
-        formCategoria = FormularioCategoria()
-        formSubcategoria = FormularioSubcategoria()
-        formSubclas = FormularioSubclasificacion()
-
-    context = {
-        "categorias": categorias,
-        "subcategorias": Subcategoria.objects.all(),
-        'formCategoria': formCategoria,
-        'formSubcategoria': formSubcategoria,
-        'formSubclas': formSubclas,
-        'capas_importadas': capas_importadas,
-        'proyecto_activo': proyecto,
-    }
-
-    return render(request, 'editor.html', context)
-
-def mapa(request):
-    categorias = Categoria.objects.all()
-    subcategorias = Subcategoria.objects.all()
-    context = {
-        "categorias": categorias,
-        "subcategorias": subcategorias,
-    }
-    return render(request, 'mapa.html', context)
-
-def pagregistro(request):
-    if request.method == 'POST':
-        form = RegistroForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('editor')
-    else:
-        form = RegistroForm()
-    return render(request, 'registro.html', {'form': form})
-
-@login_required
-def listaCategorias(request):
-    categorias = Categoria.objects.all()
-    context = {
-        'categorias': categorias
-    }
-    return render(request, 'categorias.html', context)
-
 #-------------------------------------------------/CRUD CAPAS\----------------------------------------------------------------
-@permission_required('is_staff', login_url='/')
-def admin_menu(request):
-    return render(request, 'CRUDCapas/adminMenu.html')
-
-@permission_required('is_staff', login_url='/')
-def admin_categorias(request):
-    formCategoria = FormularioCategoria()
-    categorias = Categoria.objects.all().order_by('nombre')
-    context = {
-        'categorias': categorias,
-        'formCategoria': formCategoria
-    }
-    return render(request, 'CRUDCapas/adminCategorias.html', context)
-
 def guardar_categoria(request):
     if request.method == 'POST':
         form = FormularioCategoria(request.POST, request.FILES)
@@ -173,7 +61,6 @@ def editar_categoria(request, categoria_id):
     
     return JsonResponse({'success': False, 'error': 'Método no permitido'})
 
-
 def eliminar_categoria(request, categoria_id):
     categoria = get_object_or_404(Categoria, pk=categoria_id)
     if request.method == 'POST':
@@ -188,16 +75,6 @@ def obtener_categoria(request, categoria_id):
         'id': categoria.id,
         'nombre': categoria.nombre
     })
-
-@permission_required('is_staff', login_url='/')
-def admin_subcategorias(request):
-    formSubcat = FormularioSubcategoria
-    subcategorias = Subcategoria.objects.all().order_by('nombre')
-    context= {
-        'subcategorias': subcategorias,
-        'formSubcat': formSubcat,
-    }
-    return render(request, 'CRUDCapas/adminSubcategorias.html', context)
 
 def guardar_subcategoria(request):
     if request.method == "POST":
@@ -254,6 +131,99 @@ def eliminar_subcat(request, subcatId):
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Método no permitido.'})
 
+def guardar_subclas(request):
+    if request.method == "POST":
+        form = FormularioSubclasificacion(request.POST, request.FILES)
+        if form.is_valid():
+            nueva_subclas = form.save(commit=False)
+
+            import json
+            campos_json = request.POST.get("campos_config", "[]")
+            nueva_subclas.campos_config = json.loads(campos_json)
+
+            nueva_subclas.save()
+
+            subclasificaciones = []
+
+            for s in Subclasificacion.objects.select_related('categoria', 'subcategoria').order_by('nombre'):
+                subclasificaciones.append({
+                    "id": s.id,
+                    "nombre": s.nombre,
+                    "subcategoria": s.subcategoria.nombre if s.subcategoria else None,
+                    "categoria": s.categoria.nombre,
+                })
+            return JsonResponse({
+                'success': True,
+                'nombre': nueva_subclas.nombre,
+                'id': nueva_subclas.id,
+                'subclasificaciones': subclasificaciones,
+            })
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors})
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+def editar_subclas(request, subclasId):
+    subclasificacion = get_object_or_404(Subclasificacion, pk=subclasId)
+    if request.method == "GET":
+        return JsonResponse({
+            'id': subclasificacion.id,
+            'nombre': subclasificacion.nombre,
+            'subcategoria': subclasificacion.subcategoria_id,
+            'categoria': subclasificacion.categoria_id,
+            'tipo_geometria': subclasificacion.tipo_geometria,
+            'campos_config': subclasificacion.campos_config,
+        })
+    
+    elif request.method == "POST":
+        form = FormularioSubclasificacion(request.POST, instance=subclasificacion)
+
+        if form.is_valid():
+            sub_obj = form.save(commit=False)
+
+            import json
+            campos_json = request.POST.get("campos_config", "[]")
+            sub_obj.campos_config = json.loads(campos_json)
+
+            if sub_obj.subcategoria:
+                sub_obj.categoria = sub_obj.subcategoria.categoria
+
+            else:
+                if sub_obj.categoria is None:
+                        return JsonResponse({
+                        'success': False,
+                        'errors': {"categoria": ["La categoría es obligatoria"]},
+                    })
+
+            sub_obj.save()
+        
+            subclasificaciones = []
+
+            for s in Subclasificacion.objects.select_related('categoria', 'subcategoria').order_by('nombre'):
+                subclasificaciones.append({
+                    "id": s.id,
+                    "nombre": s.nombre,
+                    "subcategoria": s.subcategoria.nombre if s.subcategoria else None,
+                    "categoria": s.categoria.nombre,
+                })
+
+            return JsonResponse({
+                'success': True,
+                'id': sub_obj.id,
+                'nombre': sub_obj.nombre,
+                'subclasificaciones': subclasificaciones,
+            })
+
+        return JsonResponse({'success': False, 'errors': form.errors})
+
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+def eliminar_subclas(request, subclasId):
+    subclasificacion = get_object_or_404(Subclasificacion, pk=subclasId)
+    if request.method == "POST":
+        subclasificacion.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+
 #____________________________________________________________________________________________________________________________
 @login_required
 def asociar_categoria_a_proyecto(request):
@@ -290,63 +260,63 @@ def paglogout(request):
     response = redirect('mapa')
     response.set_cookie('clear_local_storage', '1', max_age=5)
     return response
-
+#CÓDIGO USADO PARA GUARDAR LAS CATEGORIAS, SUBCATEGORIAS Y SUBCLASIFICACIONES CREADAS EN EL EDITOR
 #VISTAS PARA GUARDAR CATEGORIAS Y SUBCATEGORIAS MEDIANTE AJAX
 
-def guardar_por_ajax(request):
-    print("Método recibido:", request.method)
-    print("POST data:", request.POST)
-    if request.method == "POST":
-        tipo_form = request.POST.get('tipo_form')
+# def guardar_por_ajax(request):
+#     print("Método recibido:", request.method)
+#     print("POST data:", request.POST)
+#     if request.method == "POST":
+#         tipo_form = request.POST.get('tipo_form')
 
-        if tipo_form == 'categoria':
-            form = FormularioCategoria(request.POST, request.FILES)
-            if form.is_valid():
-                categoria = form.save()
+#         if tipo_form == 'categoria':
+#             form = FormularioCategoria(request.POST, request.FILES)
+#             if form.is_valid():
+#                 categoria = form.save()
 
-                categorias = list(Categoria.objects.values('id', 'nombre'))
-                return JsonResponse({
-                    'success': True,
-                    'tipo': 'categoria',
-                    'nombre': categoria.nombre,
-                    'id': categoria.id,
-                    'categorias':categorias,
-                })
-            else:
-                return JsonResponse({'success': False, 'errors': form.errors})
+#                 categorias = list(Categoria.objects.values('id', 'nombre'))
+#                 return JsonResponse({
+#                     'success': True,
+#                     'tipo': 'categoria',
+#                     'nombre': categoria.nombre,
+#                     'id': categoria.id,
+#                     'categorias':categorias,
+#                 })
+#             else:
+#                 return JsonResponse({'success': False, 'errors': form.errors})
         
-        elif tipo_form == 'subcategoria':
-            form = FormularioSubcategoria(request.POST, request.FILES)
-            if form.is_valid():
-                subcategoria = form.save()
-                return JsonResponse({
-                    'success': True,
-                    'tipo': 'subcategoria',
-                    'nombre': subcategoria.nombre,
-                    'id': subcategoria.id,
-                })
-            else:
-                return JsonResponse({'success': False, 'errors': form.errors})
+#         elif tipo_form == 'subcategoria':
+#             form = FormularioSubcategoria(request.POST, request.FILES)
+#             if form.is_valid():
+#                 subcategoria = form.save()
+#                 return JsonResponse({
+#                     'success': True,
+#                     'tipo': 'subcategoria',
+#                     'nombre': subcategoria.nombre,
+#                     'id': subcategoria.id,
+#                 })
+#             else:
+#                 return JsonResponse({'success': False, 'errors': form.errors})
             
-        elif tipo_form == 'subclasificacion':
-            form = FormularioSubclasificacion(request.POST, request.FILES)
-            if form.is_valid():
-                subclasificacion = form.save()
-                return JsonResponse({
-                    'success': True,
-                    'tipo': 'subclasificacion',
-                    'nombre': subclasificacion.nombre,
-                    'id': subclasificacion.id,
-                    'tipo_geometria': subclasificacion.tipo_geometria,
-                    'campos_config': subclasificacion.campos_config,
-                })
-            else:
-                return JsonResponse({'success': False, 'errors': form.errors})
+#         elif tipo_form == 'subclasificacion':
+#             form = FormularioSubclasificacion(request.POST, request.FILES)
+#             if form.is_valid():
+#                 subclasificacion = form.save()
+#                 return JsonResponse({
+#                     'success': True,
+#                     'tipo': 'subclasificacion',
+#                     'nombre': subclasificacion.nombre,
+#                     'id': subclasificacion.id,
+#                     'tipo_geometria': subclasificacion.tipo_geometria,
+#                     'campos_config': subclasificacion.campos_config,
+#                 })
+#             else:
+#                 return JsonResponse({'success': False, 'errors': form.errors})
         
-        else:
-            return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
+#         else:
+#             return JsonResponse({'success': False, 'error': 'Formulario desconocido.'})
     
-    return JsonResponse({'success': False, 'error': 'Método no permitido.'})
+#     return JsonResponse({'success': False, 'error': 'Método no permitido.'})
 
 def obtener_contenido_categoria(request, categoria_id):
     try:
@@ -377,7 +347,6 @@ def obtener_contenido_subcategoria(request, subcategoria_id):
 #VISTA PARA CONSEGUIR LA CONFIGURACIÓN DE LA SUBCLASIFICACION
 
 @require_GET
-
 def obtener_config_subclasificacion(request, subclas_id):
     try:
         sub = Subclasificacion.objects.get(pk=subclas_id)
@@ -407,13 +376,6 @@ def proyectos_filtrados(user):
     
     else:
         return queryset_base
-
-@login_required
-def proyectos(request):
-    formPoyecto = FormularioProyecto
-    proyectos_a_mostrar = proyectos_filtrados(request.user)
-
-    return render(request, 'proyectos.html', {'proyectos': proyectos_a_mostrar, 'formProyecto': formPoyecto})
 
 def guardar_proyecto(request):
     if request.method == 'POST':
@@ -558,9 +520,7 @@ def eliminar_figura(request, figura_id):
     
     except Exception as e:
         print("Error eliminando figura: ", e)
-        return JsonResponse({'success': False, 'error': str(e)}, status = 500)
-
-    
+        return JsonResponse({'success': False, 'error': str(e)}, status = 500)   
 
 @login_required
 def capas_del_proyecto(request):

@@ -12,6 +12,7 @@
         <div id="sidebar-content"> <!--COlOCAR LEYENDA, CATEGORIAS, ETC usar for each TAMBIEN PONER EL FORM PARA LLENAR DATOS--> 
             <div id="sidebar-body">
                 <ul style="list-style-type: none; margin-left: -20px;">
+                    <!-- COMENTADA POR SI SE DECIDE USAR DE NUEVO
                     {% if user.is_authenticated %}
                     <li class="lista-categorias">
                         {% if user.is_superuser %}
@@ -23,6 +24,7 @@
                         {% endif %}
                     </li>
                     {% endif %}
+                    -->
                     {% for categoria in categorias %}
                     <li class="lista-categorias">
                         <div class="contenedor-categorias">
@@ -33,6 +35,7 @@
                         </div>
     
                         <ul class="lista-subcategorias" style="display: none; list-style-type: none; margin-left: -20px;">
+                            <!-- COMENTADA HASTA QUE SE DECIDA USAR DE NUEVO
                             {% if user.is_authenticated %}
                             <li>
                                 {% if user.is_superuser %}
@@ -45,10 +48,12 @@
                                     <button class="sidebar-options crear-subclas-btn" data-bs-toggle="modal" data-bs-target="#modalEstaticoSubclasificacion" style="font-weight: bold;" data-categoria-id="{{ categoria.id }}" >
                                         Crear nueva subclasificación
                                     </button>
+                                    
                                 </div>
                                 {% endif %}
                             </li>
                             {% endif %}
+                            -->
                             <li class="subcat-list-items" id="subcats-{{ categoria.id }}"></li>
                             <li class="subclas-list-items" id="subclas-cat-{{ categoria.id }}"></li>
                         </ul>
