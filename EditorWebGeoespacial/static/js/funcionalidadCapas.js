@@ -580,64 +580,20 @@ export function asignarDatosFigura(layer){
 
 //Cuando seleccionas una subclasificación para dibujar, se ejecuta esta función.
 export async function activarMododibujo(subclasId) {
-    try {
-        const response = await fetch(`/obtener_config_subclasificacion/${subclasId}/`);
-        const data = await response.json();
+    const response = await fetch(`/obtener_config_subclasificacion/${subclasId}/`);
+    const data = await response.json();
 
-        console.log("Respuesta subclasificación:", data);
-
-        if (!data || data.success === false) {
-            alert('Error cargando subclasificación');
-            return;
-        }
-
-        window.subclasSeleccionada = data;
-
-        map.pm.removeControls();
-        map.pm.Toolbar.changeControlOrder([]);
-        map.off('pm:create');
-
-        const barraHerramientas = {
-            position: 'bottomleft',
-            drawMarker: false,
-            drawPolyline: false,
-            drawPolygon: false,
-            drawCircle: false,
-            drawCircleMarker: false,
-            drawRectangle: false,
-            rotateMode: false,
-            editMode: true,
-            dragMode: true,
-            removalMode: true,
-            cutPolygon: false,
-            drawText: false,
-        };
-
-        switch (data.tipo_geometria) {
-            case 'Point':
-                barraHerramientas.drawMarker = true;
-                break;
-            case 'LineString':
-                barraHerramientas.drawPolyline = true;
-                break;
-            case 'Polygon':
-                barraHerramientas.drawPolygon = true;
-                break;
-        }
-
-        if (data.tipo_geometria === 'Point') map.pm.enableDraw('Marker');
-        if (data.tipo_geometria === 'LineString') map.pm.enableDraw('Line');
-        if (data.tipo_geometria === 'Polygon') map.pm.enableDraw('Polygon');
-
-        map.pm.addControls(barraHerramientas);
-
-        crearFigura()
-
-    } catch (err) {
-        console.error("Error activando las herramientas de dibujo", err);
+    if (!data || data.success === false) {
+        alert("Error cargando subclasificación");
+        return;
     }
+
+    activarHerramientasGeoman(data.tipo_geometria, {
+        subclas: data,
+        crearFigura: true
+    });
 }
-window.activarMododibujo = activarMododibujo
+window.activarMododibujo = activarMododibujo;
 
 export function dibujarFigurasUsuario(features) {
 
@@ -667,4 +623,69 @@ export function dibujarFigurasUsuario(features) {
     }).addTo(window.map);
 
     console.log("Figuras de usuario cargadas")
+}
+
+export function activarHerramientasGeoman(tipo, opciones = {}) {
+
+    let subclas = opciones.subclas || null;
+
+    if (subclas) {
+        window.subclasSeleccionada = subclas;
+    }
+
+    map.pm.removeControls();
+    map.pm.Toolbar.changeControlOrder([]);
+    map.off('pm:create');
+
+    map.pm.disableDraw('Marker');
+    map.pm.disableDraw('Line');
+    map.pm.disableDraw('Polygon');
+
+    const barraHerramientas = {
+        position: 'bottomleft',
+        drawMarker: false,
+        drawPolyline: false,
+        drawPolygon: false,
+        drawCircle: false,
+        drawCircleMarker: false,
+        drawRectangle: false,
+        rotateMode: false,
+        editMode: true,
+        dragMode: true,
+        removalMode: true,
+        cutPolygon: false,
+        drawText: false,
+    };
+
+    if (!tipo) {
+        console.warn("activarHerramientasGeoman() fue llamado sin tipo");
+        return;
+    }
+
+    tipo = tipo.toLowerCase();
+
+    if (tipo.includes("point")) {
+        barraHerramientas.drawMarker = true;
+        map.pm.enableDraw("Marker");
+        console.log("Modo dibujo: Puntos");
+    }
+    else if (tipo.includes("line")) {
+        barraHerramientas.drawPolyline = true;
+        map.pm.enableDraw("Line");
+        console.log("Modo dibujo: Líneas");
+    }
+    else if (tipo.includes("polygon")) {
+        barraHerramientas.drawPolygon = true;
+        map.pm.enableDraw("Polygon");
+        console.log("Modo dibujo: Polígonos");
+    }
+    else {
+        console.warn("Tipo desconocido en activarHerramientasGeoman:", tipo);
+    }
+
+    map.pm.addControls(barraHerramientas);
+
+    if (subclas && opciones.crearFigura !== false) {
+        crearFigura();
+    }
 }

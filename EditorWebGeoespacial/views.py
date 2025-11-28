@@ -693,6 +693,7 @@ def importar_SHP(request):
                 'success': True,
                 'geojson': geojson_data,
                 'capa_id': capa.id,
+                "tipo_geometria": capa.tipo_geometria,
                 'message': 'Capa importada y guardada en Base de Datos'
             })
         
