@@ -32,6 +32,9 @@ export function inicializacionMapa() {
     calles.addTo(map);
     map.setMaxBounds(limitesMapa);
 
+    const editableLayers = L.featureGroup().addTo(map);
+    window.editableLayers = editableLayers
+
     return {map, calles, satelite, relieve}
 }
 
@@ -69,4 +72,5 @@ export function tilesetsMapa(map, calles, satelite, relieve) {
         cambiarMapa(relieve);
     });
 }
+
 

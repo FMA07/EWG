@@ -31,7 +31,7 @@
                             <a class="nav-link" href="{% url 'registro' %}">Registrarse</a>
                         </li>
                     {% endif %}
-                    {% if not user.is_authenticated and request.resolver_match.url_name != 'login' %}
+                    {% if not user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'login' %}">Iniciar sesión</a>
                         </li>
@@ -99,9 +99,6 @@
         crossorigin=""></script>
 
 <!--ESTE SCRIPT CARGA LOS DIFERENTES TILESETS Y DESPUÉS CARGA EL MAPA, INICIANDO CON EL DE LAS CALLES-->
-<script>
-    window.mapaPublico = true;
-</script>
 
 <script type="module">
     import {
@@ -126,13 +123,22 @@
         mostrarDatosOffcanvas
     } from "{% static 'js/formularios.js' %}"
 
+    import {
+        guardarEstadoVisibilidad,
+        alternarVisibilidadFigUsuario,
+        actualizarVisibilidadFigurasUsuario,
+        restaurarEstadoVisibilidad,
+    } from "{% static 'js/visibilidad.js' %}"
+
+    window.capasVisibles = window.capasVisibles || {};
+    window.visibilidadFiguras = window.visibilidadFiguras || {};
     window.camposOcultos = [
         '__subclasificacionId',
         '__subclasificacionNombre',
         '__origenCapa',
     ]
 
-    document.addEventListener('DOMContentLoaded', function(){
+    document.addEventListener('DOMContentLoaded', async function(){
 
         const {map, calles, satelite, relieve} = inicializacionMapa()
 
@@ -146,8 +152,19 @@
 
         inicializadorSidebar()
 
-        cargarFigurasPublicas(map)
+        restaurarEstadoVisibilidad()
 
+        document.addEventListener("change", function (e) {
+            if (e.target.matches(".categoria-checkbox") || 
+                e.target.matches(".subcat-checkbox") ||
+                e.target.matches(".subclas-checkbox")) { 
+                alternarVisibilidadFigUsuario(e);
+            }
+        });
+
+        await cargarFigurasPublicas(map)
+
+        actualizarVisibilidadFigurasUsuario()
         
     })
 

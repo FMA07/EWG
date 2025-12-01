@@ -3,7 +3,7 @@
 {% load static %}
 {% block content %}
     <div class="container mt-5">
-        <h1>Iniciar sesión</h1>
+        <h1>Iniciar sesión<a href="{% url 'registro' %}" style="font-size: small;"> o Registrarse</a></h1>
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}

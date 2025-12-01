@@ -583,7 +583,7 @@ def capas_del_proyecto(request):
                 "subcategoria_id": sub.subcategoria.id if sub.subcategoria else None,
                 "subclasificacion_id": sub.id,
             },
-            "feature_id": figura.id,
+            "id": figura.id,
             "tipo": "usuario",
         })
 
@@ -787,9 +787,9 @@ def cargar_figuras_publicas(request):
             "id": fig.id,
             "geom": geom_json,
             "atributos": fig.atributos,
-            "subclasificacion": subclas.nombre if subclas else None,
-            "subcategoria": subclas.subcategoria.nombre if subclas and subclas.subcategoria else None,
-            "categoria": subclas.categoria.nombre if subclas else None,
+            "categoria_id": subclas.categoria.id if subclas and subclas.categoria else None,
+            "subcategoria_id": subclas.subcategoria.id if subclas and subclas.subcategoria else None,
+            "subclasificacion_id": subclas.id if subclas else None,
         })
 
     return JsonResponse({"figuras": listaFiguras})

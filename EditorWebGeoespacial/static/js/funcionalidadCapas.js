@@ -162,7 +162,8 @@ export function cargarCapas(map) {
                         layer.feature = feature
                         layer.feature.properties = layer.feature.properties || {}
                         layer.feature.properties.__origenCapa = capa.nombre
-                        layer.feature.properties.id = feature.feature_id
+                        layer.feature.properties.id = feature.id || feature.feature_id;
+                        console.log("ID FIGURA:", layer.feature.properties.id);
                         layer.feature.properties.tipo = feature.tipo
 
                         if (window.editableLayers) {
@@ -406,7 +407,6 @@ export function crearFigura() { //Llamada por activarModoDibujo()
         }
 
 
-        attachEditListeners(layer);
         asignarDatosFigura(layer);
         layer.on('click', () => {
             mostrarDatosOffcanvas(layer)
@@ -484,7 +484,7 @@ export function asignarDatosFigura(layer){
         btnGuardar.textContent = 'Guardar figura';
         btnGuardar.className = 'btn btn-primary';
 
-        btnGuardar.addEventListener('click', (event) => {
+        btnGuardar.addEventListener('click', async (event) => {
             event.preventDefault(); 
 
             const datos = {};
@@ -493,23 +493,17 @@ export function asignarDatosFigura(layer){
             });
 
             for (let campo of sub.campos) {
-                const valor = datos[campo.nombre]
+                const valor = datos[campo.nombre];
 
                 if (campo.tipo === "numero") {
-                    if (valor.trim() === "") {
-                        alert(`El campo "${campo.nombre}" es obligatorio y debe ser un número.`);
-                        return;
-                    }
-
-                    if (!/^-?\d+(\.\d+)?$/.test(valor)) {
-                        alert(`El campo "${campo.nombre}" debe contener solo números.`);
+                    if (valor.trim() === "" || !/^-?\d+(\.\d+)?$/.test(valor)) {
+                        alert(`El campo "${campo.nombre}" debe ser un número válido.`);
                         return;
                     }
                 }
 
                 if (campo.tipo === "fecha") {
-                    const fechaOk = !isNaN(Date.parse(valor));
-                    if (!fechaOk) {
+                    if (isNaN(Date.parse(valor))) {
                         alert(`El campo "${campo.nombre}" debe ser una fecha válida.`);
                         return;
                     }
@@ -523,44 +517,54 @@ export function asignarDatosFigura(layer){
                 }
             }
 
-            console.log('Layer recibido:', layer);
-            console.log('Tiene toGeoJSON?:', typeof layer.toGeoJSON);
+            layer.feature = layer.feature || { type: 'Feature', properties: {} };
+            Object.assign(layer.feature.properties, datos);
 
-            const figuraData = {
-                subclasificacion_id: sub.id,
-                atributos: datos,
-                geometria: layer.toGeoJSON().geometry,
-            };
+            const figuraId = layer.feature.properties.id;
 
-            console.log('Figura lista para guardar: ', figuraData);
+            
+            if (figuraId) {
 
-            //Estas dos líneas permiten actualizar la capa para que la figura muestre los atributos asignados
-            layer.feature = layer.feature || {type: 'Feature', properties: {}};
-            layer.feature.properties = Object.assign({}, layer.feature.properties, datos);
+                await guardarCambiosFigura(layer);
+                alert('Cambios guardados correctamente');
 
-            fetch('/guardar_figura/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie("csrftoken"),
-                },
-                body: JSON.stringify(figuraData),
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log('Guardado: ', data);
-                if (data.success) {
-                    if (data.id){
-                        layer.feature.properties.id = data.id;
+            } 
+            
+            else {
+
+                const figuraData = {
+                    subclasificacion_id: sub.id,
+                    atributos: datos,
+                    geometria: layer.toGeoJSON().geometry,
+                };
+
+                fetch('/guardar_figura/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify(figuraData),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.id){
+                            layer.feature.properties.id = data.id;
+                            attachEditListeners(layer);
+                        }
+
+                        alert('Figura creada correctamente');
+                    } else {
+                        alert('Error creando la figura');
                     }
-                    alert('Figura guardada correctamente');
-                    const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-                    offcanvas?.hide(); 
-                } else {
-                    console.error('Error guardando la figura: ', data.error)
-                }
-            })
-            .catch(err => console.error('Error guardando figura: ', err));
+                })
+                .catch(err => console.error('Error guardando figura:', err));
+
+            }
+
+            const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+            offcanvas?.hide(); 
         });
 
         form.appendChild(btnGuardar);
@@ -606,11 +610,12 @@ export function dibujarFigurasUsuario(features) {
         onEachFeature: function(feature, layer) {
             layer.feature = feature
             layer.feature.properties = layer.feature.properties || {}
-            layer.feature.properties.id = feature.feature_id
+            layer.feature.properties.id = feature.id || feature.feature_id;
             layer.feature.properties.tipo = "usuario"
             layer.feature.properties.categoria_id = feature.properties.categoria_id
             layer.feature.properties.subcategoria_id = feature.properties.subcategoria_id
             layer.feature.properties.subclasificacion_id = feature.properties.subclasificacion_id
+
 
             window.editableLayers.addLayer(layer)
             layer.addTo(window.map)

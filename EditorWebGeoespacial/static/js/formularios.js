@@ -139,9 +139,11 @@ export async function generarFormularioEditable(layer){
 
 //Funcion que permite ver la tabla de datos en offcanvas al hacer click en una figura de una capa cargada
 export function guardarAtributosEditados(layer, formElement) {
+
     const formData = new FormData(formElement);
     const newProperties = {};
-    const oldProps = layer.feature.properties
+
+    const oldProps = layer.feature.properties || {};
 
     for (const [key, value] of formData.entries()) {
         if (!window.camposOcultos.includes(key)) {
@@ -149,23 +151,33 @@ export function guardarAtributosEditados(layer, formElement) {
         }
     }
 
-    for (const key in oldProps) {
-        if (window.camposOcultos.includes(key)) {
-            newProperties[key] = oldProps[key]
+    if (oldProps.id) newProperties.id = oldProps.id;
+
+    if (oldProps.tipo) newProperties.tipo = oldProps.tipo;
+    if (oldProps.categoria_id) newProperties.categoria_id = oldProps.categoria_id;
+    if (oldProps.subcategoria_id) newProperties.subcategoria_id = oldProps.subcategoria_id;
+    if (oldProps.subclasificacion_id) newProperties.subclasificacion_id = oldProps.subclasificacion_id;
+
+    // Mantener campos ocultos
+    for (const key of window.camposOcultos || []) {
+        if (oldProps[key] !== undefined) {
+            newProperties[key] = oldProps[key];
         }
     }
-    
-    layer.feature.properties = newProperties
 
-        if (oldProps.id) {
-            guardarCambiosFigura(layer)
-        } else {
-            console.warn("Figura editada no tiene Id en BD, no se puede guardar")
-        }
+    layer.feature.properties = newProperties;
 
-    alert('Atributos guardados exitosamente')
+    if (newProperties.id) {
+        guardarCambiosFigura(layer);
+        console.log("✔ Figura actualizada en BD:", newProperties.id);
+    } else {
+        console.warn("⚠ Figura editada no tiene Id en BD, no se puede guardar");
+    }
+
+    alert('Atributos guardados exitosamente');
     window.mostrarDatosOffcanvas(layer);
 }
+
 
 export function generarInputPorTipo(campo) {
     switch (campo.tipo) {

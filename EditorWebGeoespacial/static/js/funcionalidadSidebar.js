@@ -286,6 +286,7 @@ export function mostrarSubclasificacion(items, container){
             })
         })
     }
+    
     setTimeout(() => {
         if (typeof actualizarVisibilidadFigurasUsuario === 'function') {
             actualizarVisibilidadFigurasUsuario()

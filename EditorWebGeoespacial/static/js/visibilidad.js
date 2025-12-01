@@ -1,7 +1,6 @@
 export let ultimoEstadoVisibilidad = {}
 
 export function guardarEstadoVisibilidad() {
-    if (window.mapaPublico) return;
     const estadoFiguras = {}
 
     document.querySelectorAll(".categoria-checkbox, .subcat-checkbox, .subclas-checkbox")
@@ -34,7 +33,6 @@ export function restaurarEstadoVisibilidad() {
 }
 
 export function alternarVisibilidadFigUsuario(e) {
-    if (window.mapaPublico) return;
     
     const target = e?.target
     
@@ -66,10 +64,7 @@ export function alternarVisibilidadFigUsuario(e) {
 
 export function actualizarVisibilidadFigurasUsuario() {
 
-    if (window.mapaPublico) {
-        console.log("Mapa público - sin visibilidad de usuario");
-        return;
-    }
+    
 
     console.log("CHECKBOXES ACTIVOS:",
         document.querySelectorAll(".subcat-checkbox").length,
@@ -124,16 +119,7 @@ export function actualizarVisibilidadFigurasUsuario() {
         const checkboxSubclas = document.querySelector(`.subclas-checkbox[data-id='${subclasId}']`);
 
         if (!checkboxSubclas) {
-            console.log("SUBCLAS AÚN NO EXISTE EN DOM → usando estado guardado");
-
-            if (keySubclas in ultimoEstadoVisibilidad) {
-                if (ultimoEstadoVisibilidad[keySubclas] === false) {
-                    visible = false;
-                }
-            } else {
-                // Nueva subclasificación, ocultar hasta que cargue
-                visible = false;
-            }
+            
         }
 
         // ---- REGLA 1: Categoría obligatoria ----
@@ -143,9 +129,11 @@ export function actualizarVisibilidadFigurasUsuario() {
         if (!isNaN(subcatId) && subcatId > 0) {
             const cbSubcat = document.querySelector(`.subcat-checkbox[data-id='${subcatId}']`)
 
-            if (!cbSubcat) return
-
-            if (!activasSubcat.has(subcatId)) visible = false;
+            if (!cbSubcat) {
+                // No hay subcategoría en DOM -> no filtrar por subcategoría
+            } else {
+                if (!activasSubcat.has(subcatId)) visible = false;
+            }
         }
 
         // ---- REGLA 3: Subclasificación obligatoria ----
